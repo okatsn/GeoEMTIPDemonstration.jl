@@ -1,0 +1,13 @@
+name = "GeoEMTIPDemonstration"
+uuid = "62c35ed0-18b3-4656-bcc9-55a06871f065"
+authors = ["okatsn <okatsn@gmail.com> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.8"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
