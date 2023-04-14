@@ -21,7 +21,7 @@ plot(df, x=:AlarmedRateForecasting, y = :MissingRateForecasting,
 # ## Each a subplot
 set_default_plot_size(21cm, 8cm)
 plot(df, x=:AlarmedRateForecasting, y = :MissingRateForecasting, 
-    intercept=[1], slope=[-1], 
+    intercept=[1], slope=[-1], # args for abline
     xgroup = :prp, color = :group1_colors, alpha = [0.1],
     Geom.subplot_grid(
         Geom.density2d(levels = 7), 
