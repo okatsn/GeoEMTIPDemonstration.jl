@@ -13,25 +13,20 @@ prp2index(str) = only(findall(occursin.(str, uniqprp)))
 transform!(df, :prp => ByRow(prp2index) => :group1)
 transform!(df, :group1 =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
 
-
 # ## group of figure (since dimension `frc` may be too large)
-transform!(df,:frc => ByRow(x -> (Date(split(x, "-")[1], DateFormat("yyyymmdd"))))=> :frc_start) # the first day of forecasting phases
+insertcols!(df, :figure => missing)
+maxrowperfig = 6 # max rows per figure
 
-edges = [
-    Date(0000, 1, 1),
-    Date(2017, 10, 1), 
-    Date(2020, 10, 1),
-    Date(9999,12,31)
-]
-
-DI = DateInterval(edges)
-which_interval = x -> only(findall(map(f -> f(x), [(dt -> t0 <= dt < t1) for (t0, t1) in DI])))
-transform!(df,:frc_start => ByRow(which_interval) => :figure) # the first day of forecasting phases
-
-
-
-df.frc_start |> unique
-
+nr = 0
+figid = 1
+for dfg in groupby(df, :frc)
+    if nr > maxrowperfig
+        figid = figid + 1
+        nr = 0
+    end
+    dfg.figure .= figid
+    nr = nr + 1
+end
 
 # # AlgebraOfGraphic
 # ## All in one single plot
@@ -58,7 +53,7 @@ molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(color = :p
 molp_all |> draw
 
 # additional abline:
-randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; color = "red", linestyle = :dashdot) * mapping(:x, :y)
+randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; color = "red", linestyle = :dashdot) * mapping(:x => "alarmed rate", :y => "missing rate")
 molp_all + randguess |> draw
 
 
@@ -69,11 +64,26 @@ molplane_scatter * layer_wireframe * mapping(color = :prp) |> p -> draw(p; axis 
 
 
 # ## In subplots
-molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(color = :prp, layout = :frc => "forecasting phase") + randguess
+molp_all = molplane_scatter * layer_basic * mapping(color = :prp, layout = :frc => "forecasting phase") + randguess
 molp_all |> draw
 
-set_aog_theme!()
-axis_long = (width = 225, height = 225)
 molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(col = :prp, row = :frc => "forecasting phase") + randguess
-molp_all |> p -> draw(p; axis =axis_long)
+molp_all |> p -> draw(p; axis = (width = 225, height = 225))
 
+
+# plot_elements = visual(Scatter, color = uniqcolors[1]) +  AlgebraOfGraphics.density() * visual(Contour)
+plot_elements = [
+    AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense),
+    visual(Scatter, color = (uniqcolors[1], 0.8), markersize = 5), 
+]
+figs_data = [data(dfg) for dfg in groupby(df, :figure)]
+figs = figs_data .* 
+        Ref(xymap) .*
+        Ref(reduce(+, plot_elements)) .* 
+        Ref(mapping(col = :prp, row = :frc => "forecasting phase")) .+ 
+        Ref(randguess) .|> 
+        Ref(x -> draw(x; axis = (width = 150, height = 140, limits = (0, 1 ,0 ,1)))) 
+
+figs[1]
+figs[2]
+figs[3]
