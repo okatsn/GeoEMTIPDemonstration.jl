@@ -1,18 +1,52 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
 using Gadfly: Scale.default_discrete_colors as gadfly_colors
+using Statistics
 using Revise
 using GeoEMTIPDemonstration
 using Dates
 df = CSV.read(dir_cwb2023mid("summary_test.csv"), DataFrame);
 transform!(df, :HitRatesForecasting => ByRow(x->1-x) => :MissingRateForecasting)
+transform!(df, [:MissingRateForecasting, :AlarmedRateForecasting] => ByRow((x, y) -> 1-x-y) => :FittingDegree)
 dfg = groupby(df, "prp")
 uniqprp = string.(unique(df.prp))
+uniqfrc = string.(unique(df.frc))
 uniqcolors = gadfly_colors(length(uniqprp))
-prp2index(str) = only(findall(occursin.(str, uniqprp)))
-transform!(df, :prp => ByRow(prp2index) => :group1)
-transform!(df, :group1 =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
+uniqcolors2 = gadfly_colors(length(uniqfrc))
+toindex(str, uniqlabels) = only(findall(occursin.(str, uniqlabels)))
+transform!(df, :prp => ByRow(x -> toindex(x, uniqprp)) => :prp_ind)
+transform!(df, :frc => ByRow(x -> toindex(x, uniqfrc)) => :frc_ind)
+transform!(df, :prp_ind =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
 
+
+# # Fitting Degree
+dfcb = combine(groupby(df, [:prp_ind, :frc_ind]), :FittingDegree => sum, nrow; renamecols = false)
+fd_norm_str = "Fitting Degree (normalized over jointstation models)"
+transform!(dfcb, [:FittingDegree, :nrow] => ByRow((x, y) -> x / y) => fd_norm_str)
+fbar = Figure(; resolution=(600, 500))
+
+ticklabel_prp(i) = uniqprp[i]
+axbar = Axis(fbar[1, 2])
+axbar2 = Axis(fbar[2, 2])
+barplot!(axbar, dfcb.prp_ind, dfcb[!, fd_norm_str]; 
+    stack = dfcb.frc_ind, 
+    color = uniqcolors2[dfcb.frc_ind], 
+    )
+dfcb2 = combine(groupby(dfcb, :prp_ind), fd_norm_str => sum; renamecols = false)
+barplot!(axbar2, dfcb2.prp_ind, dfcb2[!, fd_norm_str]; 
+    color = :black, 
+    )
+axbar2.xticks[] = (collect(eachindex(uniqprp)), uniqprp)
+Label(fbar[:, 1], fd_norm_str, tellheight = false, rotation = π/2, fontsize =15)
+Legend(fbar[:, 3], 
+    [PolyElement(polycolor = uniqcolors2[i]) for i in eachindex(uniqcolors2)], 
+    uniqfrc,
+    "Forecasting phase",
+    tellheight = false, tellwidth = false
+)
+fbar
+
+# # Molchan diagram
 # ## group of figure (since dimension `frc` may be too large)
 insertcols!(df, :figure => missing)
 maxrowperfig = 6 # max rows per figure
@@ -87,3 +121,20 @@ figs = figs_data .*
 figs[1]
 figs[2]
 figs[3]
+
+
+
+
+tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
+       height = 0.1:0.1:0.9,
+       grp = [1, 2, 3, 1, 2, 3, 1, 2, 3],
+       grp1 = [1, 2, 2, 1, 1, 2, 1, 1, 2],
+       grp2 = [1, 1, 2, 1, 2, 1, 1, 2, 1]
+       )
+
+barplot(tbl.x, tbl.height,
+        stack = tbl.grp[1:8],
+        color = tbl.grp,
+        axis = (xticks = (1:3, ["left", "middle", "right"]),
+                title = "Stacked bars"),
+        )
