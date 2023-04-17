@@ -17,12 +17,12 @@ transform!(df, :group1 =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
 insertcols!(df, :figure => missing)
 maxrowperfig = 6 # max rows per figure
 
-nr = 0
+nr = 1
 figid = 1
 for dfg in groupby(df, :frc)
     if nr > maxrowperfig
         figid = figid + 1
-        nr = 0
+        nr = 1
     end
     dfg.figure .= figid
     nr = nr + 1
@@ -71,10 +71,10 @@ molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(col = :prp
 molp_all |> p -> draw(p; axis = (width = 225, height = 225))
 
 
-# plot_elements = visual(Scatter, color = uniqcolors[1]) +  AlgebraOfGraphics.density() * visual(Contour)
+# plot_elements = visual(Scatter, color = uniqcolors[1]) +  AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense)
 plot_elements = [
-    AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense),
-    visual(Scatter, color = (uniqcolors[1], 0.8), markersize = 5), 
+    AlgebraOfGraphics.density(npoints = 50) * visual(colormap = :grayC),
+    visual(Scatter, color = (uniqcolors[3], 1), markersize = 3), 
 ]
 figs_data = [data(dfg) for dfg in groupby(df, :figure)]
 figs = figs_data .* 
