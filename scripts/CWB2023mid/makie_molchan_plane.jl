@@ -14,6 +14,25 @@ transform!(df, :prp => ByRow(prp2index) => :group1)
 transform!(df, :group1 =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
 
 
+# ## group of figure (since dimension `frc` may be too large)
+transform!(df,:frc => ByRow(x -> (Date(split(x, "-")[1], DateFormat("yyyymmdd"))))=> :frc_start) # the first day of forecasting phases
+
+edges = [
+    Date(0000, 1, 1),
+    Date(2017, 10, 1), 
+    Date(2020, 10, 1),
+    Date(9999,12,31)
+]
+
+DI = DateInterval(edges)
+which_interval = x -> only(findall(map(f -> f(x), [(dt -> t0 <= dt < t1) for (t0, t1) in DI])))
+transform!(df,:frc_start => ByRow(which_interval) => :figure) # the first day of forecasting phases
+
+
+
+df.frc_start |> unique
+
+
 # # AlgebraOfGraphic
 # ## All in one single plot
 

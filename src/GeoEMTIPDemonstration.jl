@@ -9,4 +9,7 @@ export dir_cwb2023mid
 include("only1field.jl")
 export only1field
 
+using Dates
+include("dateinterval.jl")
+export DateInterval
 end
