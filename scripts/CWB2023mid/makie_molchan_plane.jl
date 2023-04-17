@@ -3,6 +3,7 @@ using CairoMakie, AlgebraOfGraphics
 using Gadfly: Scale.default_discrete_colors as gadfly_colors
 using Revise
 using GeoEMTIPDemonstration
+using Dates
 df = CSV.read(dir_cwb2023mid("summary_test.csv"), DataFrame);
 transform!(df, :HitRatesForecasting => ByRow(x->1-x) => :MissingRateForecasting)
 dfg = groupby(df, "prp")
@@ -14,7 +15,7 @@ transform!(df, :group1 =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
 
 
 # # AlgebraOfGraphic
-# ## All in one
+# ## All in one single plot
 
 xymap = mapping(
     :AlarmedRateForecasting => identity => "alarmed rate",
@@ -48,4 +49,12 @@ ax3d = (type = Axis3, width = 300, height = 300)
 molplane_scatter * layer_wireframe * mapping(color = :prp) |> p -> draw(p; axis = ax3d)
 
 
+# ## In subplots
+molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(color = :prp, layout = :frc => "forecasting phase") + randguess
+molp_all |> draw
+
+set_aog_theme!()
+axis_long = (width = 225, height = 225)
+molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(col = :prp, row = :frc => "forecasting phase") + randguess
+molp_all |> p -> draw(p; axis =axis_long)
 
