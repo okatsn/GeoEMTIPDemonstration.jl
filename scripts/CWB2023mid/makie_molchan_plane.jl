@@ -26,14 +26,26 @@ molplane_scatter = data(df) * xymap
 # scatter plot 
 set_aog_theme!()
 axis = (width = 225, height = 225)
-molplane_scatter * mapping(color = :prp) |> draw
+layer_basic = visual()
+molplane_scatter * layer_basic * mapping(color = :prp) |> draw  # Noted that layer_basic can be ignored
 
 # contour plot 
 layer_contour = AlgebraOfGraphics.density() * visual(Contour)
 molplane_scatter * layer_contour * mapping(color = :prp) |> draw
 
+# contour with scatter
+molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(color = :prp)
+molp_all |> draw
+
+# additional abline:
+randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; color = "red", linestyle = :dashdot) * mapping(:x, :y)
+molp_all + randguess |> draw
+
+
 # density 3D plot
 layer_wireframe = AlgebraOfGraphics.density() * visual(Wireframe, linewidth = 0.05)
 ax3d = (type = Axis3, width = 300, height = 300)
 molplane_scatter * layer_wireframe * mapping(color = :prp) |> p -> draw(p; axis = ax3d)
+
+
 
