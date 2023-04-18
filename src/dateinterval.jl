@@ -5,7 +5,20 @@ mutable struct DateInterval{T<:Dates.AbstractTime}
 end
 
 """
-Iterable `DataInterval`; returns `(t0, t1)` from `edges` where `(t0, t1) = edges[i], edges[i + 1]` for `i` in `1:length(edges)-1`.
+Iterable `DateInterval(edges)`; returns `(t0, t1)` from `edges` where `(t0, t1) = edges[i], edges[i + 1]` for `i` in `1:length(edges)-1`.
+
+# Example
+```jldoctest
+julia> using Dates
+
+julia> edges = [Date(0000, 1, 1), Date(2017, 10, 1), Date(2020, 10, 1), Date(9999,12,31)];
+
+julia> [(t0, t1) for (t0, t1) in DateInterval(edges)]
+3-element Vector{Tuple{Date, Date}}:
+ (Date("0000-01-01"), Date("2017-10-01"))
+ (Date("2017-10-01"), Date("2020-10-01"))
+ (Date("2020-10-01"), Date("9999-12-31"))
+```
 """
 function DateInterval(edges)
     DateInterval(
