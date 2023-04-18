@@ -30,14 +30,12 @@ f3.figure
 
 
 uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
-dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial]), :FittingDegree => sum, nrow; renamecols = false)
-fd_norm_str = "Fitting Degree (normalized over jointstation models)"
-transform!(dfcb, [:FittingDegree, :nrow] => ByRow((x, y) -> x / y) => fd_norm_str)
+dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial]), :FittingDegree => nanmean, nrow)
 
 f1 = Figure()
 frccolors = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
 # frccolors = gadfly_colors(length(P.uniqfrc))
-content1 = data(dfcb) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", Symbol(fd_norm_str), stack = :frc_ind, color = :frc_ind => "Forecasting phase") * mapping(col = :trial)
+content1 = data(dfcb) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", :FittingDegree_mean, stack = :frc_ind, color = :frc_ind => "Forecasting phase") * mapping(col = :trial)
 draw!(f1, content1)
 
 f1
@@ -46,8 +44,8 @@ f1
 
 
 f2 = Figure()
-dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial]), fd_norm_str => sum; renamecols = false)
-content2 = data(dfcb2) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", Symbol(fd_norm_str) => "sum of fitting degree") * mapping(col = :trial)
+dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial]), :FittingDegree_mean => nanmean; renamecols = false)
+content2 = data(dfcb2) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", :FittingDegree_mean => "mean of fitting degree") * mapping(col = :trial)
 draw!(f2, content2)
 
 f2
