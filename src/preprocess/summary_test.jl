@@ -1,13 +1,7 @@
-abstract type MidtermFigure end
-# struct FigureMolchan
+abstract type Preprocessed end
 
 
-
-
-
-
-
-struct Prep202304
+struct Prep202304 <: Preprocessed
     uniqprp
     uniqfrc
     toindex_prp

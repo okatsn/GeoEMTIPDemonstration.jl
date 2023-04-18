@@ -1,6 +1,5 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
-using Gadfly: Scale.default_discrete_colors as gadfly_colors
 using Statistics
 using Revise
 using GeoEMTIPDemonstration
@@ -13,37 +12,13 @@ df = vcat(df_mix3, df_ge3, df_gm3)
 P = prep202304!(df)
 @assert isequal(P.table, df)
 
-uniqcolors_prp = gadfly_colors(length(P.uniqprp))
-uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
+# uniqcolors_prp = gadfly_colors(length(P.uniqprp))
+# 
 # transform!(df, :prp_ind =>  ByRow(ind -> uniqcolors_prp[ind]) => :group1_colors)
 
 # # Fitting Degree
-dfcb = combine(groupby(df, [:prp_ind, :frc_ind]), :FittingDegree => sum, nrow; renamecols = false)
-fd_norm_str = "Fitting Degree (normalized over jointstation models)"
-transform!(dfcb, [:FittingDegree, :nrow] => ByRow((x, y) -> x / y) => fd_norm_str)
-fbar = Figure(; resolution=(600, 500))
-
-
-
-axbar = Axis(fbar[1, 2])
-axbar2 = Axis(fbar[2, 2])
-barplot!(axbar, dfcb.prp_ind, dfcb[!, fd_norm_str]; 
-    stack = dfcb.frc_ind, 
-    color = uniqcolors_frc[dfcb.frc_ind], 
-    )
-dfcb2 = combine(groupby(dfcb, :prp_ind), fd_norm_str => sum; renamecols = false)
-barplot!(axbar2, dfcb2.prp_ind, dfcb2[!, fd_norm_str]; 
-    color = :black, 
-    )
-axbar2.xticks[] = (collect(eachindex(P.uniqprp)), P.uniqprp)
-Label(fbar[:, 1], fd_norm_str, tellheight = false, rotation = π/2, fontsize =15)
-Legend(fbar[:, 3], 
-    [PolyElement(polycolor = uniqcolors_frc[i]) for i in eachindex(uniqcolors_frc)], 
-    P.uniqfrc,
-    "Forecasting phase",
-    tellheight = false, tellwidth = false
-)
-fbar
+f1 = figureplot(P, FDB2Panel23mid((trial = "mix", )))
+f1.figure
 
 # # Molchan diagram
 # ## group of figure (since dimension `frc` may be too large)
