@@ -5,19 +5,17 @@ using Statistics
 using Revise
 using GeoEMTIPDemonstration
 using Dates
-df = CSV.read(dir_cwb2023mid("summary_test.csv"), DataFrame);
-transform!(df, :HitRatesForecasting => ByRow(x->1-x) => :MissingRateForecasting)
-transform!(df, [:MissingRateForecasting, :AlarmedRateForecasting] => ByRow((x, y) -> 1-x-y) => :FittingDegree)
-dfg = groupby(df, "prp")
-uniqprp = string.(unique(df.prp))
-uniqfrc = string.(unique(df.frc))
-uniqcolors = gadfly_colors(length(uniqprp))
-uniqcolors2 = gadfly_colors(length(uniqfrc))
-toindex(str, uniqlabels) = only(findall(occursin.(str, uniqlabels)))
-transform!(df, :prp => ByRow(x -> toindex(x, uniqprp)) => :prp_ind)
-transform!(df, :frc => ByRow(x -> toindex(x, uniqfrc)) => :frc_ind)
-transform!(df, :prp_ind =>  ByRow(ind -> uniqcolors[ind]) => :group1_colors)
+df_mix3 = CSV.read(dir_cwb2023mid("summary_test_mix_3yr.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
+df_ge3  = CSV.read(dir_cwb2023mid("summary_test_ge_3yr.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
+df_gm3  = CSV.read(dir_cwb2023mid("summary_test_gm_3yr.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
+df = vcat(df_mix3, df_ge3, df_gm3)
 
+P = prep202304!(df)
+@assert isequal(P.table, df)
+
+uniqcolors_prp = gadfly_colors(length(P.uniqprp))
+uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
+# transform!(df, :prp_ind =>  ByRow(ind -> uniqcolors_prp[ind]) => :group1_colors)
 
 # # Fitting Degree
 dfcb = combine(groupby(df, [:prp_ind, :frc_ind]), :FittingDegree => sum, nrow; renamecols = false)
@@ -25,22 +23,23 @@ fd_norm_str = "Fitting Degree (normalized over jointstation models)"
 transform!(dfcb, [:FittingDegree, :nrow] => ByRow((x, y) -> x / y) => fd_norm_str)
 fbar = Figure(; resolution=(600, 500))
 
-ticklabel_prp(i) = uniqprp[i]
+
+
 axbar = Axis(fbar[1, 2])
 axbar2 = Axis(fbar[2, 2])
 barplot!(axbar, dfcb.prp_ind, dfcb[!, fd_norm_str]; 
     stack = dfcb.frc_ind, 
-    color = uniqcolors2[dfcb.frc_ind], 
+    color = uniqcolors_frc[dfcb.frc_ind], 
     )
 dfcb2 = combine(groupby(dfcb, :prp_ind), fd_norm_str => sum; renamecols = false)
 barplot!(axbar2, dfcb2.prp_ind, dfcb2[!, fd_norm_str]; 
     color = :black, 
     )
-axbar2.xticks[] = (collect(eachindex(uniqprp)), uniqprp)
+axbar2.xticks[] = (collect(eachindex(P.uniqprp)), P.uniqprp)
 Label(fbar[:, 1], fd_norm_str, tellheight = false, rotation = π/2, fontsize =15)
 Legend(fbar[:, 3], 
-    [PolyElement(polycolor = uniqcolors2[i]) for i in eachindex(uniqcolors2)], 
-    uniqfrc,
+    [PolyElement(polycolor = uniqcolors_frc[i]) for i in eachindex(uniqcolors_frc)], 
+    P.uniqfrc,
     "Forecasting phase",
     tellheight = false, tellwidth = false
 )
@@ -105,10 +104,10 @@ molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(col = :prp
 molp_all |> p -> draw(p; axis = (width = 225, height = 225))
 
 
-# plot_elements = visual(Scatter, color = uniqcolors[1]) +  AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense)
+# plot_elements = visual(Scatter, color = uniqcolors_prp[1]) +  AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense)
 plot_elements = [
     AlgebraOfGraphics.density(npoints = 50) * visual(colormap = :grayC),
-    visual(Scatter, color = (uniqcolors[3], 1), markersize = 3), 
+    visual(Scatter, color = (uniqcolors_prp[3], 1), markersize = 3), 
 ]
 figs_data = [data(dfg) for dfg in groupby(df, :figure)]
 figs = figs_data .* 
