@@ -1,7 +1,9 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
+using Gadfly: Scale.default_discrete_colors as gadfly_colors
 using Statistics
 using Revise
+import NaNMath: mean as nanmean
 using GeoEMTIPDemonstration
 using Dates
 df_mix3 = CSV.read(dir_cwb2023mid("summary_test_mix_3yr.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
@@ -17,10 +19,53 @@ P = prep202304!(df)
 # transform!(df, :prp_ind =>  ByRow(ind -> uniqcolors_prp[ind]) => :group1_colors)
 
 # # Fitting Degree
-f1 = figureplot(P, FDB2Panel23mid((trial = "mix", )))
+f1 = figureplot(P, StackedBarplot23a((trial = "mix", )))
 f1.figure
 
+f2 = figureplot(P, StackedBarplot23a((trial = "GE", )))
+f2.figure
+
+f3 = figureplot(P, StackedBarplot23a((trial = "GM", )))
+f3.figure
+
+
+uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
+dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial]), :FittingDegree => sum, nrow; renamecols = false)
+fd_norm_str = "Fitting Degree (normalized over jointstation models)"
+transform!(dfcb, [:FittingDegree, :nrow] => ByRow((x, y) -> x / y) => fd_norm_str)
+
+f1 = Figure()
+frccolors = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
+# frccolors = gadfly_colors(length(P.uniqfrc))
+content1 = data(dfcb) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", Symbol(fd_norm_str), stack = :frc_ind, color = :frc_ind => "Forecasting phase") * mapping(col = :trial)
+draw!(f1, content1)
+
+f1
+
+
+
+
+f2 = Figure()
+dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial]), fd_norm_str => sum; renamecols = false)
+content2 = data(dfcb2) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", Symbol(fd_norm_str) => "sum of fitting degree") * mapping(col = :trial)
+draw!(f2, content2)
+
+f2
+
+
+
+
+df_ge3p = tablegroupselect(P, StackedBarplot23a((trial = "GE", )))
+data(df_ge3p) * mapping(:FittingDegree) * histogram() |> draw
+
+df_gm3p = tablegroupselect(P, StackedBarplot23a((trial = "GM", )))
+data(df_gm3p) * mapping(:FittingDegree) * histogram() |> draw
+
+
 # # Molchan diagram
+# Keys for AOG:
+# - [How to combine AlgebraOfGraphics with plain Makie plots?](https://aog.makie.org/stable/FAQs/#How-to-combine-AlgebraOfGraphics-with-plain-Makie-plots?)
+
 # ## group of figure (since dimension `frc` may be too large)
 insertcols!(df, :figure => missing)
 maxrowperfig = 6 # max rows per figure
@@ -38,6 +83,8 @@ end
 
 # # AlgebraOfGraphic
 # ## All in one single plot
+
+df = groupby(df, :trial)[(trial = "mix", )]# FIXME
 
 xymap = mapping(
     :AlarmedRateForecasting => identity => "alarmed rate",

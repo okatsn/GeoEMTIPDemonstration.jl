@@ -1,4 +1,4 @@
-function figureplot(P::Prep202304, FDB::FDB2Panel23mid)
+function figureplot(P::Prep202304, FDB::StackedBarplot23a)
     df = tablegroupselect(P, FDB)
 
     uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
