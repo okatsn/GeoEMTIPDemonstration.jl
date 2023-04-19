@@ -19,6 +19,7 @@ using DataFrames
 include("preprocess/summary_test.jl")
 export prep202304!
 
-include("tablegroupselect.jl")
-export tablegroupselect
+using OkDataFrameTools
+include("viewgroup.jl")
+export viewgroup
 end

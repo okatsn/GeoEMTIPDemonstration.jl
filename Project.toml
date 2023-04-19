@@ -14,6 +14,7 @@ Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
+OkDataFrameTools = "44fb8f6e-77e3-42fb-a351-fd44f2ba0634"
 OkFiles = "b25a35d4-863d-483c-9fa1-95480bd075d2"
 
 [compat]
