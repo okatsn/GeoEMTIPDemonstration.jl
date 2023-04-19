@@ -4,6 +4,8 @@ using Gadfly: Scale.default_discrete_colors as gadfly_colors
 using Statistics
 using Revise
 import NaNMath: mean as nanmean
+using Revise
+using OkDataFrameTools
 using GeoEMTIPDemonstration
 using Dates
 df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mix_3yr.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
@@ -31,9 +33,7 @@ stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
 
 dfcb = combine(groupby(df, [:prp, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
-allowmissing!(dfcb)
-replace!(dfcb.FittingDegreeMOM, NaN => missing)
-dropmissing!(dfcb) # if there is NaN, stacked plot goes wrong
+dropnanmissing!(dfcb)
 
 f1 = Figure()
 plt = data(dfcb) * # data
@@ -51,6 +51,7 @@ f1
 
 f2 = Figure()
 dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
+dropnanmissing!(dfcb2)
 content2 = data(dfcb2) * 
     (
         visual(BarPlot, colormap = uniqcolors_frc) * 
@@ -63,11 +64,12 @@ f2
 
 
 # ## Distribution of fitting degree
-df_ge3p = viewgroup(P; trial = "GE")
-data(df_ge3p) * mapping(:FittingDegree) * histogram() |> draw
+dfn = deepcopy(df);
+dropnanmissing!(dfn)
+data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial) |> draw
 
-df_gm3p = viewgroup(P; trial = "GM")
-data(df_gm3p) * mapping(:FittingDegree) * histogram() |> draw
+
+data(viewgroup(dfn; trial = "GE", train_yr = 3)) * mapping(:FittingDegree)* visual(Hist, bins = 15) |> draw
 
 
 # # Molchan diagram
