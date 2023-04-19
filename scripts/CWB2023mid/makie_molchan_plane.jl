@@ -28,41 +28,45 @@ uniqcolors_frc = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
 # uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
 
 stryear(x) = "$x years"
+repus(x) = replace(x, "_" => "-")
 
-dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:prp, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+allowmissing!(dfcb)
+replace!(dfcb.FittingDegreeMOM, NaN => missing)
+dropmissing!(dfcb) # if there is NaN, stacked plot goes wrong
 
 f1 = Figure()
 plt = data(dfcb) * # data
     mapping(col = :trial, row = :train_yr => stryear) * # WARN: it is not allowed to have integer grouping keys.
     (
         visual(BarPlot, colormap = uniqcolors_frc) * 
-        mapping(:prp_ind => "Filter", :FittingDegreeMOM => "Fitting degree (avg. over models)", 
+        mapping(:prp => repus => "Filter", :FittingDegreeMOM => "Fitting degree (avg. over models)", 
                 stack = :frc_ind, 
                 color = :frc_ind => "Forecasting phase")
     )
-draw!(f1, plt)
+draw!(f1, plt; axis = (xticklabelrotation = 0.2π, ))
 f1
 
 
+
 f2 = Figure()
-dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial, :train_yr]), :FittingDegreeMOM => nanmean => :FittingDegreeMOT)
+dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
 content2 = data(dfcb2) * 
     (
         visual(BarPlot, colormap = uniqcolors_frc) * 
-        mapping(:prp_ind => "Filter", :FittingDegreeMOT => "Fitting degree (avg. over trials)")
+        mapping(:prp => repus => "Filter", :FittingDegreeMOT => "Fitting degree (avg. over trials)")
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
-draw!(f2, content2)
+draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
 f2
 
 
-# CHECKPOINT: confirm nanmean; new setxticks!
 
 # ## Distribution of fitting degree
-df_ge3p = tablegroupselect(P; trial = "GE")
+df_ge3p = viewgroup(P; trial = "GE")
 data(df_ge3p) * mapping(:FittingDegree) * histogram() |> draw
 
-df_gm3p = tablegroupselect(P; trial = "GM")
+df_gm3p = viewgroup(P; trial = "GM")
 data(df_gm3p) * mapping(:FittingDegree) * histogram() |> draw
 
 
