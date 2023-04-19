@@ -14,28 +14,20 @@ df = vcat(df_mix3, df_ge3, df_gm3)
 P = prep202304!(df)
 @assert isequal(P.table, df)
 
-# uniqcolors_prp = gadfly_colors(length(P.uniqprp))
-# 
-# transform!(df, :prp_ind =>  ByRow(ind -> uniqcolors_prp[ind]) => :group1_colors)
 
 # # Fitting Degree
-f1 = figureplot(P, StackedBarplot23a((trial = "mix", )))
-f1.figure
 
-f2 = figureplot(P, StackedBarplot23a((trial = "GE", )))
-f2.figure
-
-f3 = figureplot(P, StackedBarplot23a((trial = "GM", )))
-f3.figure
+# Colors:
+# uniqcolors_prp = gadfly_colors(length(P.uniqprp))
+uniqcolors_frc = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
+# uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
 
 
-uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
 dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial]), :FittingDegree => nanmean, nrow)
 
 f1 = Figure()
-frccolors = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
-# frccolors = gadfly_colors(length(P.uniqfrc))
-content1 = data(dfcb) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", :FittingDegree_mean, stack = :frc_ind, color = :frc_ind => "Forecasting phase") * mapping(col = :trial)
+
+content1 = data(dfcb) * visual(BarPlot, colormap = uniqcolors_frc) * mapping(:prp_ind => "Filter", :FittingDegree_mean, stack = :frc_ind, color = :frc_ind => "Forecasting phase") * mapping(col = :trial)
 draw!(f1, content1)
 
 f1
@@ -45,18 +37,18 @@ f1
 
 f2 = Figure()
 dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial]), :FittingDegree_mean => nanmean; renamecols = false)
-content2 = data(dfcb2) * visual(BarPlot, colormap = frccolors) * mapping(:prp_ind => "Filter", :FittingDegree_mean => "mean of fitting degree") * mapping(col = :trial)
+content2 = data(dfcb2) * visual(BarPlot, colormap = uniqcolors_frc) * mapping(:prp_ind => "Filter", :FittingDegree_mean => "mean of fitting degree") * mapping(col = :trial)
 draw!(f2, content2)
 
 f2
 
 
 
-
-df_ge3p = tablegroupselect(P, StackedBarplot23a((trial = "GE", )))
+# ## Distribution of fitting degree
+df_ge3p = tablegroupselect(P; trial = "GE")
 data(df_ge3p) * mapping(:FittingDegree) * histogram() |> draw
 
-df_gm3p = tablegroupselect(P, StackedBarplot23a((trial = "GM", )))
+df_gm3p = tablegroupselect(P; trial = "GM")
 data(df_gm3p) * mapping(:FittingDegree) * histogram() |> draw
 
 

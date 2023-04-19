@@ -19,9 +19,6 @@ using DataFrames
 include("preprocess/summary_test.jl")
 export prep202304!
 
-using Gadfly: Scale.default_discrete_colors as gadfly_colors
-using CairoMakie
-include("figures/figureplot.jl")
-include("figures/figureplot23a.jl")
-export StackedBarplot23a, figureplot, tablegroupselect
+include("tablegroupselect.jl")
+export tablegroupselect
 end
