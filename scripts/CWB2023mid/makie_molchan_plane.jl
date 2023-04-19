@@ -6,10 +6,15 @@ using Revise
 import NaNMath: mean as nanmean
 using GeoEMTIPDemonstration
 using Dates
-df_mix3 = CSV.read(dir_cwb2023mid("summary_test_mix_3yr.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
+df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mix_3yr.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
 df_ge3  = CSV.read(dir_cwb2023mid("summary_test_ge_3yr.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
 df_gm3  = CSV.read(dir_cwb2023mid("summary_test_gm_3yr.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
-df = vcat(df_mix3, df_ge3, df_gm3)
+df_mx7 = CSV.read(dir_cwb2023mid("summary_test_mix_7yr.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix", :train_yr => 7)
+df_ge7  = CSV.read(dir_cwb2023mid("summary_test_ge_7yr.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 7)
+df_gm7  = CSV.read(dir_cwb2023mid("summary_test_gm_7yr.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 7)
+df = vcat(
+    df_mx3, df_ge3, df_gm3, 
+    df_mx7, df_ge7, df_gm7)
 
 P = prep202304!(df)
 @assert isequal(P.table, df)
@@ -22,27 +27,36 @@ P = prep202304!(df)
 uniqcolors_frc = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
 # uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
 
+stryear(x) = "$x years"
 
-dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial]), :FittingDegree => nanmean, nrow)
+dfcb = combine(groupby(df, [:prp_ind, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 
 f1 = Figure()
-
-content1 = data(dfcb) * visual(BarPlot, colormap = uniqcolors_frc) * mapping(:prp_ind => "Filter", :FittingDegree_mean, stack = :frc_ind, color = :frc_ind => "Forecasting phase") * mapping(col = :trial)
-draw!(f1, content1)
-
+plt = data(dfcb) * # data
+    mapping(col = :trial, row = :train_yr => stryear) * # WARN: it is not allowed to have integer grouping keys.
+    (
+        visual(BarPlot, colormap = uniqcolors_frc) * 
+        mapping(:prp_ind => "Filter", :FittingDegreeMOM => "Fitting degree (avg. over models)", 
+                stack = :frc_ind, 
+                color = :frc_ind => "Forecasting phase")
+    )
+draw!(f1, plt)
 f1
 
 
-
-
 f2 = Figure()
-dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial]), :FittingDegree_mean => nanmean; renamecols = false)
-content2 = data(dfcb2) * visual(BarPlot, colormap = uniqcolors_frc) * mapping(:prp_ind => "Filter", :FittingDegree_mean => "mean of fitting degree") * mapping(col = :trial)
+dfcb2 = combine(groupby(dfcb, [:prp_ind, :trial, :train_yr]), :FittingDegreeMOM => nanmean => :FittingDegreeMOT)
+content2 = data(dfcb2) * 
+    (
+        visual(BarPlot, colormap = uniqcolors_frc) * 
+        mapping(:prp_ind => "Filter", :FittingDegreeMOT => "Fitting degree (avg. over trials)")
+    ) *
+    mapping(col = :trial, row = :train_yr => stryear)
 draw!(f2, content2)
-
 f2
 
 
+# CHECKPOINT: confirm nanmean; new setxticks!
 
 # ## Distribution of fitting degree
 df_ge3p = tablegroupselect(P; trial = "GE")
