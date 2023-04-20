@@ -1,6 +1,5 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
-using Gadfly: Scale.default_discrete_colors as gadfly_colors
 using Statistics
 using LaTeXStrings
 using Revise
@@ -26,9 +25,7 @@ P = prep202304!(df)
 # # Fitting Degree
 
 # Colors:
-# uniqcolors_prp = gadfly_colors(length(P.uniqprp))
-uniqcolors_frc = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
-# uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
+uniqcolors_frc = CairoMakie.cgrad(:tab10, length(P.uniqfrc), categorical = true)
 
 stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
@@ -51,12 +48,12 @@ pl_plots =  f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 colsize!(f1.layout, 1, Relative(3/4))
 plt = data(dfcb) * # data
-    mapping(col = :trial, row = :train_yr => stryear) * # WARN: it is not allowed to have integer grouping keys.
     (
         visual(BarPlot, colormap = uniqcolors_frc) * 
         mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2, 
                 stack = :frc_ind, 
-                color = :frc_ind => "Trial (Forecasting phase)")
+                color = :frc_ind => "Trial (Forecasting phase)") * 
+    mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
     )
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(pl_plots)
@@ -103,7 +100,7 @@ f3
 
 
 f4 = Figure(;resolution= (800, 1200))
-histogram_4 = data(dfn) * mapping(:FittingDegree, color=:frc, stack=:frc) * histogram(bins = 15) * mapping(row = :train_yr => stryear, col = :trial)
+histogram_4 = data(dfn) * mapping(:FittingDegree, color=:frc_ind , stack=:frc_ind) * visual(Hist, bins=15, colormap = uniqcolors_frc)* mapping(row = :train_yr => stryear, col = :trial)
 draw!(f4, histogram_4)
 label_DcHist!(f4)
 Legend(f4[end+1, :], 
@@ -111,7 +108,7 @@ Legend(f4[end+1, :],
     P.uniqfrc,
     "Forecasting phase",
     labelsize = 14,
-    tellheight = false, tellwidth = true, halign = :center, valign = :center, nbanks = 3)
+    tellheight = true, tellwidth = false, halign = :center, valign = :center, nbanks = 3)
 f4
 Makie.save("FittingDegree_hist_by_frc.png", f4)
 # # Molchan diagram

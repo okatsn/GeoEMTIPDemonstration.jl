@@ -16,6 +16,11 @@ Given `df = CSV.read("summary_test.csv", DataFrame)`, `prep202304!(df)` calculat
 - `:frc_ind` (for `Makie` plot use)
 """
 function prep202304!(df)
+    # using Gadfly: Scale.default_discrete_colors as gadfly_colors
+    # uniqcolors_prp = gadfly_colors(length(P.uniqprp))
+    # uniqcolors_frc = gadfly_colors(length(P.uniqfrc))
+
+
     transform!(df, :HitRatesForecasting => ByRow(x->1-x) => :MissingRateForecasting)
     transform!(df, [:MissingRateForecasting, :AlarmedRateForecasting] => ByRow((x, y) -> 1-x-y) => :FittingDegree)
     uniqprp = string.(unique(df.prp))
@@ -24,6 +29,7 @@ function prep202304!(df)
     toindex_frc = x -> toindex(x, uniqfrc)
     transform!(df, :prp => ByRow(toindex_prp) => :prp_ind)
     transform!(df, :frc => ByRow(toindex_frc) => :frc_ind)
+
     return Prep202304(uniqprp, uniqfrc, toindex_prp, toindex_frc, df)
 end
 
