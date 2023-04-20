@@ -19,14 +19,16 @@ df = vcat(
     df_mx7, df_ge7, df_gm7)
 
 P = prep202304!(df)
+# Colors:
+uniqcolors_frc = CairoMakie.cgrad(:tab20, length(P.uniqfrc), categorical = true)
+to_frccolor(i) = uniqcolors_frc[i]
+
+transform!(df, :frc_ind => ByRow(to_frccolor) => :frc_color) # :frc_color is intended to solve the problem in stacking histogram (not stacking barplots; they are fine). However, mapping :frc_color to AlgebraOfGraphics.histogram (which somehow allows stacked histogram) failed.
+
 @assert isequal(P.table, df)
 
 
 # # Fitting Degree
-
-# Colors:
-uniqcolors_frc = CairoMakie.cgrad(:tab10, length(P.uniqfrc), categorical = true)
-
 stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
@@ -100,16 +102,24 @@ f3
 
 
 f4 = Figure(;resolution= (800, 1200))
-histogram_4 = data(dfn) * mapping(:FittingDegree, color=:frc_ind , stack=:frc_ind) * visual(Hist, bins=15, colormap = uniqcolors_frc)* mapping(row = :train_yr => stryear, col = :trial)
-draw!(f4, histogram_4)
+histogram_4 = data(dfn) * 
+    histogram(bins = 15) * 
+    # mapping(:FittingDegree, color=:frc_color , stack=:frc_ind) * # errored here
+    # mapping(:FittingDegree, color=:frc_ind , stack=:frc_ind) * # errored here
+    mapping(:FittingDegree, color=:frc , stack=:frc) * # this worked but I don't know how to setup colormap and the color patches seems to duplicated
+    # visual(Hist) *  # failed
+    # mapping(:FittingDegree, color = :frc, stack = :frc) # failed
+    mapping(row = :train_yr => stryear, col = :trial)
+hehe = draw!(f4, histogram_4) 
 label_DcHist!(f4)
-Legend(f4[end+1, :], 
-    [PolyElement(polycolor = color) for color in uniqcolors_frc], 
-    P.uniqfrc,
-    "Forecasting phase",
-    labelsize = 14,
-    tellheight = true, tellwidth = false, halign = :center, valign = :center, nbanks = 3)
-f4
+# colorbar!(f4[:, end+1], hehe) # it is not working!
+# Legend(f4[end+1, :], 
+#     [PolyElement(polycolor = color) for color in uniqcolors_frc], 
+#     P.uniqfrc,
+#     "Forecasting phase",
+#     labelsize = 14,
+#     tellheight = true, tellwidth = false, halign = :center, valign = :center, nbanks = 3)
+f4 # CHECKPOINT: I don't know how to specify the colormap for `histogram`; I don't know how to have a stacked `Hist`.
 Makie.save("FittingDegree_hist_by_frc.png", f4)
 # # Molchan diagram
 # Keys for AOG:
