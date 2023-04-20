@@ -35,7 +35,10 @@ repus(x) = replace(x, "_" => "-")
 dfcb = combine(groupby(df, [:prp, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
 
-f1 = Figure()
+f1 = Figure(; resolution = (800, 800))
+pl_plots =  f1[1, 1] = GridLayout()
+pl_legend = f1[1, 2] = GridLayout()
+colsize!(f1.layout, 1, Relative(3/4))
 plt = data(dfcb) * # data
     mapping(col = :trial, row = :train_yr => stryear) * # WARN: it is not allowed to have integer grouping keys.
     (
@@ -44,7 +47,13 @@ plt = data(dfcb) * # data
                 stack = :frc_ind, 
                 color = :frc_ind => "Forecasting phase")
     )
-draw!(f1, plt; axis = (xticklabelrotation = 0.2π, ))
+draw!(pl_plots[:, :], plt; axis = (xticklabelrotation = 0.2π, ))
+Legend(pl_legend[:, :], 
+    [PolyElement(polycolor = color) for color in uniqcolors_frc], 
+    P.uniqfrc,
+    "Forecasting phase",
+    labelsize = 14,
+    tellheight = false, tellwidth = false)
 f1
 
 
@@ -66,7 +75,9 @@ f2
 # ## Distribution of fitting degree
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
-data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial) |> draw
+f3 = Figure()
+histogram_all = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial)
+draw!(f3, histogram_all)
 
 
 data(viewgroup(dfn; trial = "GE", train_yr = 3)) * mapping(:FittingDegree)* visual(Hist, bins = 15) |> draw
