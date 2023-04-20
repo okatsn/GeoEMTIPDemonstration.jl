@@ -2,6 +2,7 @@ using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
 using Gadfly: Scale.default_discrete_colors as gadfly_colors
 using Statistics
+using LaTeXStrings
 using Revise
 import NaNMath: mean as nanmean
 using Revise
@@ -31,9 +32,19 @@ uniqcolors_frc = cgrad(:Spectral, length(P.uniqfrc), categorical = true)
 
 stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
+xlabel2 = L"\text{Filter}"
+ylabel2 = L"D_c  \text{(averaged over trials)}"
 
 dfcb = combine(groupby(df, [:prp, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
+
+
+function label_DcPrp!(f2)
+    common_setting = (fontsize = 20, font = "Arial bold")
+    Label(f2[:, end+1], "training window length"; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
+    Label(f2[:, 0],     "fitting degree"        ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
+    Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+end
 
 f1 = Figure(; resolution = (800, 800))
 pl_plots =  f1[1, 1] = GridLayout()
@@ -43,20 +54,21 @@ plt = data(dfcb) * # data
     mapping(col = :trial, row = :train_yr => stryear) * # WARN: it is not allowed to have integer grouping keys.
     (
         visual(BarPlot, colormap = uniqcolors_frc) * 
-        mapping(:prp => repus => "Filter", :FittingDegreeMOM => "Fitting degree (avg. over models)", 
+        mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2, 
                 stack = :frc_ind, 
-                color = :frc_ind => "Forecasting phase")
+                color = :frc_ind => "Trial (Forecasting phase)")
     )
-draw!(pl_plots[:, :], plt; axis = (xticklabelrotation = 0.2π, ))
+draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
+label_DcPrp!(pl_plots)
 Legend(pl_legend[:, :], 
     [PolyElement(polycolor = color) for color in uniqcolors_frc], 
     P.uniqfrc,
     "Forecasting phase",
     labelsize = 14,
-    tellheight = false, tellwidth = false)
+    tellheight = false, tellwidth = true, halign = :left, valign = :center)
 f1
 
-
+Makie.save("FittingDegree_by=frcphase_layout=2x2.png", f1)
 
 f2 = Figure()
 dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
@@ -64,25 +76,44 @@ dropnanmissing!(dfcb2)
 content2 = data(dfcb2) * 
     (
         visual(BarPlot, colormap = uniqcolors_frc) * 
-        mapping(:prp => repus => "Filter", :FittingDegreeMOT => "Fitting degree (avg. over trials)")
+        mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
 draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
+label_DcPrp!(f2)
 f2
-
-
+Makie.save("FittingDegree_with=nanmean_layout=2x2.png", f1)
 
 # ## Distribution of fitting degree
+function label_DcHist!(f2)
+    common_setting = (fontsize = 20, font = "Arial bold")
+    Label(f2[:, end+1], "training window length"; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
+    Label(f2[:, 0],     "number of models"      ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
+    Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+end
+
+
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
 f3 = Figure()
 histogram_all = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial)
 draw!(f3, histogram_all)
+label_DcHist!(f3)
+f3
 
 
-data(viewgroup(dfn; trial = "GE", train_yr = 3)) * mapping(:FittingDegree)* visual(Hist, bins = 15) |> draw
-
-
+f4 = Figure(;resolution= (800, 1200))
+histogram_4 = data(dfn) * mapping(:FittingDegree, color=:frc, stack=:frc) * histogram(bins = 15) * mapping(row = :train_yr => stryear, col = :trial)
+draw!(f4, histogram_4)
+label_DcHist!(f4)
+Legend(f4[end+1, :], 
+    [PolyElement(polycolor = color) for color in uniqcolors_frc], 
+    P.uniqfrc,
+    "Forecasting phase",
+    labelsize = 14,
+    tellheight = false, tellwidth = true, halign = :center, valign = :center, nbanks = 3)
+f4
+Makie.save("FittingDegree_hist_by_frc.png", f4)
 # # Molchan diagram
 # Keys for AOG:
 # - [How to combine AlgebraOfGraphics with plain Makie plots?](https://aog.makie.org/stable/FAQs/#How-to-combine-AlgebraOfGraphics-with-plain-Makie-plots?)
