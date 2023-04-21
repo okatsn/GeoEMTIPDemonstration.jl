@@ -81,8 +81,11 @@ content2 = data(dfcb2) *
 draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(f2)
 f2
-Makie.save("FittingDegree_with=nanmean_layout=2x2.png", f1)
+Makie.save("FittingDegree_with=nanmean_layout=2x2.png", f2)
 
+# CHECKPOINT: 
+# - Write docstring in OkMakieToolkits
+# - Have a train-test phase plot
 # ## Distribution of fitting degree
 function label_DcHist!(f2)
     common_setting = (fontsize = 20, font = "Arial bold")
@@ -99,7 +102,7 @@ histogram_all = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * 
 draw!(f3, histogram_all)
 label_DcHist!(f3)
 f3
-
+Makie.save("FittingDegree_hist_overall.png", f3)
 
 f4 = Figure(;resolution= (800, 1200))
 histogram_4 = data(dfn) * 
