@@ -104,26 +104,7 @@ label_DcHist!(f3)
 f3
 Makie.save("FittingDegree_hist_overall.png", f3)
 
-f4 = Figure(;resolution= (800, 1200))
-histogram_4 = data(dfn) * 
-    histogram(bins = 15) * 
-    # mapping(:FittingDegree, color=:frc_color , stack=:frc_ind) * # errored here
-    # mapping(:FittingDegree, color=:frc_ind , stack=:frc_ind) * # errored here
-    mapping(:FittingDegree, color=:frc , stack=:frc) * # this worked but I don't know how to setup colormap and the color patches seems to duplicated
-    # visual(Hist) *  # failed
-    # mapping(:FittingDegree, color = :frc, stack = :frc) # failed
-    mapping(row = :train_yr => stryear, col = :trial)
-hehe = draw!(f4, histogram_4) 
-label_DcHist!(f4)
-# colorbar!(f4[:, end+1], hehe) # it is not working!
-# Legend(f4[end+1, :], 
-#     [PolyElement(polycolor = color) for color in uniqcolors_frc], 
-#     P.uniqfrc,
-#     "Forecasting phase",
-#     labelsize = 14,
-#     tellheight = true, tellwidth = false, halign = :center, valign = :center, nbanks = 3)
-f4 # CHECKPOINT: I don't know how to specify the colormap for `histogram`; I don't know how to have a stacked `Hist`.
-Makie.save("FittingDegree_hist_by_frc.png", f4)
+
 # # Molchan diagram
 # Keys for AOG:
 # - [How to combine AlgebraOfGraphics with plain Makie plots?](https://aog.makie.org/stable/FAQs/#How-to-combine-AlgebraOfGraphics-with-plain-Makie-plots?)
