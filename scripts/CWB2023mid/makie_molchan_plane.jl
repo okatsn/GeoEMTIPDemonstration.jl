@@ -2,7 +2,6 @@ using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
 using Statistics
 using LaTeXStrings
-using Revise
 import NaNMath: mean as nanmean
 using Revise
 using OkMakieToolkits
@@ -30,23 +29,18 @@ transform!(df, :frc_ind => ByRow(to_frccolor) => :frc_color) # :frc_color is int
 
 
 
-dfcb0 = combine(groupby(P.table, :train_yr), :frc => (x -> Ref(unique(x))) => :frcs)
+tablegpbytrainyr = groupby(P.table, :train_yr)
+uniqfrc_7yr = tablegpbytrainyr[(train_yr = 7, )].frc |> unique 
+uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique 
 
-function do_plot_0(uniqfrc_Nyr, nyr)
-    THBsNyr = [TwoHBoxes(Dates.Year(nyr), dt0, dt1-dt0, label) for ((dt0, dt1), label) in zip(dttag2datetime.(uniqfrc_Nyr), uniqfrc_Nyr)]
+TTP7yr = TrainTestPartition23a(uniqfrc_7yr, 7)
+TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
+(ax0a, f0a) = figureplot(TTP3yr; resolution = (800, 600))
+(ax0b, f0b) = figureplot(TTP7yr; resolution = (800, 400))
+Makie.save("Train_Test_Partitions_3years.png", f0a)
+Makie.save("Train_Test_Partitions_7years.png", f0b)
 
-    f0Nyr = Figure()
-    ax0N = Axis(f0Nyr[1,1])
-    twohstackedboxes!(ax0N, THBsNyr)
-    setyticks!(ax0N, THBsNyr)
-    datetimeticks!(ax0N, THBsNyr, Month(6))
-    ax0N.xticklabelrotation = 0.2π
-    display(f0Nyr)
-    (ax0N, f0Nyr)
-end
 
-axf0s = [(ax0N, f0Nyr) = do_plot_0(row.frcs, row.train_yr) for row in eachrow(dfcb0)]
-    
 
 # # Fitting Degree
 stryear(x) = "$x years"

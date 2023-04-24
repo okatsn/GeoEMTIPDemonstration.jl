@@ -23,4 +23,17 @@ export dttag2datetime
 using OkDataFrameTools
 include("viewgroup.jl")
 export viewgroup
+
+
+# figureplot
+using OkMakieToolkits, CairoMakie
+include("figure/figure23_traintestpart.jl")
+export TrainTestPartition23a
+
+
+
+
+
+export figureplot
+
 end
