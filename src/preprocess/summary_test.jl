@@ -47,3 +47,10 @@ function Base.show(io::IO, P::Prep202304)
     println(io, "function `toindex_prp` for converting string to index.")
     println(io, "function `toindex_frc` for converting string to index.")
 end
+
+function dttag2datetime(frctag::AbstractString)
+    delim = match(r"(\_|-)", frctag).match
+    t1t2 = split(frctag, delim);
+    t0, t1 = DateTime.(t1t2, Ref(dateformat"yyyymmdd$(delim)yyyymmdd"))
+    return (dt0 = t0, dt1 = t1)
+end

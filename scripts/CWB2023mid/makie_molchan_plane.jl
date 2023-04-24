@@ -29,6 +29,12 @@ transform!(df, :frc_ind => ByRow(to_frccolor) => :frc_color) # :frc_color is int
 @assert isequal(P.table, df)
 
 
+
+
+dttag2datetime(P.uniqfrc[1])
+
+
+
 # # Fitting Degree
 stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
