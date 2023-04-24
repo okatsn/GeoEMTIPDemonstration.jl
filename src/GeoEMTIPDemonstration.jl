@@ -26,10 +26,10 @@ export viewgroup
 
 
 # figureplot
-using OkMakieToolkits, CairoMakie
+using OkMakieToolkits, CairoMakie, AlgebraOfGraphics, OkDataFrameTools
 include("figure/figure23_traintestpart.jl")
 export TrainTestPartition23a
-
+export MolchanOverallComposite23a
 
 
 

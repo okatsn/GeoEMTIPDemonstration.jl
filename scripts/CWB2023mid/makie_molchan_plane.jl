@@ -143,42 +143,12 @@ end
 
 # # AlgebraOfGraphic
 # ## All in one single plot
-
-df = groupby(df, :trial)[(trial = "mix", )]# FIXME
-
-xymap = mapping(
-    :AlarmedRateForecasting => identity => "alarmed rate",
-    :MissingRateForecasting => identity => "missing rate",
-)
-
-# additional abline:
-randlinekwargs = (color = "red", linestyle = :dashdot)
-randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; randlinekwargs...) * mapping(:x => "alarmed rate", :y => "missing rate")
-
-fmolall = Figure(; resolution=(750, 800))
-ftop = fmolall[1,1] = GridLayout(1, 2)
-fbtm = fmolall[2,1] = GridLayout(1, 2)
-molall = data(df) * visual(Scatter, markersize = 10, colormap = uniqcolors_prp) * xymap * mapping(color = :prp_ind => "Filter") + randguess
-# molall2 = data(df) * AlgebraOfGraphics.density() * visual(Contour) * xymap * mapping(color = :prp => "Filter") + randguess
-draw2Dscatter = draw!(ftop[1, 1], molall)
-# draw!(fmolall[1, 2], molall2)
-
-
-# density 2D plot
-plotbyprp2D = data(df) * layer_contour * xymap * mapping(col = :prp) + randguess
-draw2Dcountour = draw!(fbtm[1, 1], plotbyprp2D; axis = (aspect = 1, ))
-Legend(ftop[1, 2], 
-    vcat(
-        [MarkerElement(color = clri, marker = '•', markersize = 30) for clri in uniqcolors_prp], 
-        [LineElement(;randlinekwargs...)]), 
-    vcat(P.uniqprp, ["random guess"])
-)
-
-colorbar!(fbtm[1, 2], draw2Dcountour; tellheight = false, vertical = true)
-
-
-rowsize!(fmolall.layout,1, Relative(3/4))
-fmolall
+MolchanOverallComposite23a(P, "mix", uniqcolors_prp) |> figureplot
+MolchanOverallComposite23a(P, "GE" , uniqcolors_prp) |> figureplot
+MolchanOverallComposite23a(P, "GM" , uniqcolors_prp) |> figureplot
+# TODO: 
+# - there is a problem in group GM, see the plot!
+# - train_yr of 7 and 3 are mixed!
 
 # KEYNOTE:
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
