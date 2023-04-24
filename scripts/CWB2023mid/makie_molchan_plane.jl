@@ -1,11 +1,11 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
-using OkMakieToolkits
 using Statistics
 using LaTeXStrings
 using Revise
 import NaNMath: mean as nanmean
 using Revise
+using OkMakieToolkits
 using OkDataFrameTools
 using GeoEMTIPDemonstration
 using Dates
@@ -30,10 +30,23 @@ transform!(df, :frc_ind => ByRow(to_frccolor) => :frc_color) # :frc_color is int
 
 
 
+dfcb0 = combine(groupby(P.table, :train_yr), :frc => (x -> Ref(unique(x))) => :frcs)
 
-dttag2datetime(P.uniqfrc[1])
+function do_plot_0(uniqfrc_Nyr, nyr)
+    THBsNyr = [TwoHBoxes(Dates.Year(nyr), dt0, dt1-dt0, label) for ((dt0, dt1), label) in zip(dttag2datetime.(uniqfrc_Nyr), uniqfrc_Nyr)]
 
+    f0Nyr = Figure()
+    ax0N = Axis(f0Nyr[1,1])
+    twohstackedboxes!(ax0N, THBsNyr)
+    setyticks!(ax0N, THBsNyr)
+    datetimeticks!(ax0N, THBsNyr, Month(6))
+    ax0N.xticklabelrotation = 0.2π
+    display(f0Nyr)
+    (ax0N, f0Nyr)
+end
 
+axf0s = [(ax0N, f0Nyr) = do_plot_0(row.frcs, row.train_yr) for row in eachrow(dfcb0)]
+    
 
 # # Fitting Degree
 stryear(x) = "$x years"
