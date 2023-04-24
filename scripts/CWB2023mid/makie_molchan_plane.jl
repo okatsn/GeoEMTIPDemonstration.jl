@@ -21,7 +21,9 @@ df = vcat(
 P = prep202304!(df)
 # Colors:
 uniqcolors_frc = CairoMakie.cgrad(:tab20, length(P.uniqfrc), categorical = true)
+uniqcolors_prp = CairoMakie.cgrad(:rainbow, length(P.uniqprp), categorical = true)
 to_frccolor(i) = uniqcolors_frc[i]
+to_prpcolor(i) = uniqcolors_prp[i]
 
 transform!(df, :frc_ind => ByRow(to_frccolor) => :frc_color) # :frc_color is intended to solve the problem in stacking histogram (not stacking barplots; they are fine). However, mapping :frc_color to AlgebraOfGraphics.histogram (which somehow allows stacked histogram) failed.
 
@@ -148,33 +150,70 @@ xymap = mapping(
     :AlarmedRateForecasting => identity => "alarmed rate",
     :MissingRateForecasting => identity => "missing rate",
 )
+
+# additional abline:
+randlinekwargs = (color = "red", linestyle = :dashdot)
+randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; randlinekwargs...) * mapping(:x => "alarmed rate", :y => "missing rate")
+
+fmolall = Figure(; resolution=(750, 800))
+ftop = fmolall[1,1] = GridLayout(1, 2)
+fbtm = fmolall[2,1] = GridLayout(1, 2)
+molall = data(df) * visual(Scatter, markersize = 10, colormap = uniqcolors_prp) * xymap * mapping(color = :prp_ind => "Filter") + randguess
+# molall2 = data(df) * AlgebraOfGraphics.density() * visual(Contour) * xymap * mapping(color = :prp => "Filter") + randguess
+draw2Dscatter = draw!(ftop[1, 1], molall)
+# draw!(fmolall[1, 2], molall2)
+
+
+# density 2D plot
+plotbyprp2D = data(df) * layer_contour * xymap * mapping(col = :prp) + randguess
+draw2Dcountour = draw!(fbtm[1, 1], plotbyprp2D; axis = (aspect = 1, ))
+Legend(ftop[1, 2], 
+    vcat(
+        [MarkerElement(color = clri, marker = '•', markersize = 30) for clri in uniqcolors_prp], 
+        [LineElement(;randlinekwargs...)]), 
+    vcat(P.uniqprp, ["random guess"])
+)
+
+colorbar!(fbtm[1, 2], draw2Dcountour; tellheight = false, vertical = true)
+
+
+rowsize!(fmolall.layout,1, Relative(3/4))
+fmolall
+
+# KEYNOTE:
+# - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
+# `AlgebraOfGraphic.density` use `KernelDensity.kde((df.AlarmedRateForecasting, df.MissingRateForecasting))`
+
+
+
+
+
+
+
+
+
+
+
 molplane_scatter = data(df) * xymap
 
 # ### colored by group *prp*:
 # scatter plot 
 set_aog_theme!()
 axis = (width = 225, height = 225)
-layer_basic = visual()
-molplane_scatter * layer_basic * mapping(color = :prp) |> draw  # Noted that layer_basic can be ignored
+molplane_scatter * visual(colormap = uniqcolors_prp) * mapping(color = :prp_ind) |> draw  # Noted that layer_basic can be ignored
 
 # contour plot 
 layer_contour = AlgebraOfGraphics.density() * visual(Contour)
-molplane_scatter * layer_contour * mapping(color = :prp) |> draw
+# molplane_scatter * layer_contour * mapping(color = :prp) |> draw
 
-# contour with scatter
-molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(color = :prp)
-molp_all |> draw
-
-# additional abline:
-randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; color = "red", linestyle = :dashdot) * mapping(:x => "alarmed rate", :y => "missing rate")
-molp_all + randguess |> draw
-
+# # contour with scatter
+# molp_all = molplane_scatter * (layer_contour + visual()) * mapping(color = :prp => "Filter")
+# molp_all |> draw
 
 # density 3D plot
-layer_wireframe = AlgebraOfGraphics.density() * visual(Wireframe, linewidth = 0.05)
+layer_wireframe = AlgebraOfGraphics.density() * visual(Wireframe, linewidth = 0.5)
 ax3d = (type = Axis3, width = 300, height = 300)
-molplane_scatter * layer_wireframe * mapping(color = :prp) |> p -> draw(p; axis = ax3d)
-
+molplane_scatter * layer_wireframe * mapping(col = :prp) |> p -> draw(p; axis = ax3d)
 
 # ## In subplots
 molp_all = molplane_scatter * layer_basic * mapping(color = :prp, layout = :frc => "forecasting phase") + randguess
@@ -182,6 +221,7 @@ molp_all |> draw
 
 molp_all = molplane_scatter * (layer_contour + layer_basic) * mapping(col = :prp, row = :frc => "forecasting phase") + randguess
 molp_all |> p -> draw(p; axis = (width = 225, height = 225))
+
 
 
 # plot_elements = visual(Scatter, color = uniqcolors_prp[1]) +  AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense)
