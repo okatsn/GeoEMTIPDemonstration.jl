@@ -33,3 +33,17 @@ function prep202304!(df)
     return Prep202304(uniqprp, uniqfrc, toindex_prp, toindex_frc, df)
 end
 
+function Base.show(io::IO, P::Prep202304)
+    println(io, "uniqprp:")
+    for tag in P.uniqprp
+        println("    $tag")
+    end
+    println(io, "uniqfrc: ")
+    for tag in P.uniqfrc
+        println("    $tag")
+    end
+    println(io, "table: a $(nrow(P.table)) by $(ncol(P.table)) table")
+
+    println(io, "function `toindex_prp` for converting string to index.")
+    println(io, "function `toindex_frc` for converting string to index.")
+end

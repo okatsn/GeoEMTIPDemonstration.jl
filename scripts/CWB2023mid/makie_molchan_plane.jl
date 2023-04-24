@@ -1,5 +1,6 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
+using OkMakieToolkits
 using Statistics
 using LaTeXStrings
 using Revise
@@ -86,6 +87,7 @@ Makie.save("FittingDegree_with=nanmean_layout=2x2.png", f2)
 # CHECKPOINT: 
 # - Write docstring in OkMakieToolkits
 # - Have a train-test phase plot
+# https://juliadatascience.io/recipe_df
 # ## Distribution of fitting degree
 function label_DcHist!(f2)
     common_setting = (fontsize = 20, font = "Arial bold")
