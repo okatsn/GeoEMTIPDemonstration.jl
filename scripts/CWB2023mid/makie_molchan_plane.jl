@@ -21,7 +21,8 @@ df = vcat(
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P; frccolor = :tab20, prpcolor = :Set1_4)
+CF23 = ColorsFigure23(P; frccolor = :tab20, prpcolor = Makie.wong_colors()) 
+# , prpcolor = :Set1_4
 
 @assert isequal(P.table, df)
 
@@ -116,6 +117,29 @@ draw!(f3, histogram_all)
 label_DcHist!(f3)
 f3
 Makie.save("FittingDegree_hist_overall.png", f3)
+
+
+
+f4 = Figure(;resolution= (800, 550))
+histogram_4 = data(dfn) * 
+    histogram(bins = 10) * 
+    mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) * 
+    mapping(row = :train_yr => stryear, col = :trial)
+hehe = draw!(f4, histogram_4) 
+label_DcHist!(f4)
+legend!(f4[0, end], hehe; valign = :top) # ;orientation = :horizontal, tellwidth = false
+f4 
+Makie.save("FittingDegree_hist_by_frc.png", f4)
+# KEYNOTE:
+# - AlgebraOfGraphics.histogram() * mapping results in `Combined{barplot}`
+# - `mapping(:FittingDegree, color=:frc_color , stack=:frc_ind) *` causes error
+# - `mapping(:FittingDegree, color=:frc_ind , stack=:frc_ind) *` causes error
+# - `visual(Hist) *` with `stack = ` argument failed since Hist of Makie cannot be stacked
+# - I cannot assign colormap, that I have to make CF23.prp.color the default Makie color
+# - The default Makie color is Makie.wong_colors(), which has a length of 7; if the number of categories is larger than 7, you will see duplicated color patches.
+
+
+
 
 
 # # Molchan Diagram
