@@ -1,11 +1,12 @@
-struct MolchanOverallComposite23a <: InformationForFigure
+struct MolchanComposite23a <: InformationForFigure
     P::Prep202304
     by_trial::String
+    by_train::Int
     CF23::ColorsFigure23
 end
 
-function figureplot(MO23a::MolchanOverallComposite23a)
-    df = groupby(MO23a.P.table, :trial)[(trial = MO23a.by_trial, )]
+function figureplot(MO23a::MolchanComposite23a)
+    df = groupby(MO23a.P.table, [:trial, :train_yr])[(trial = MO23a.by_trial, train_yr = MO23a.by_train)]
     
     df = dropnanmissing!(DataFrame(deepcopy(df)))
     uniqcolors_prp = MO23a.CF23.prp.colormap
@@ -13,7 +14,7 @@ function figureplot(MO23a::MolchanOverallComposite23a)
         :AlarmedRateForecasting => identity => "alarmed rate",
         :MissingRateForecasting => identity => "missing rate",
     )
-    layer_contour = AlgebraOfGraphics.density() * visual(Contour)
+    layer_contour = AlgebraOfGraphics.density() * visual(Contour, levels = 40, linewidth=0.5)
     
     # additional abline:
     randlinekwargs = (color = "red", linestyle = :dashdot)
@@ -24,7 +25,7 @@ function figureplot(MO23a::MolchanOverallComposite23a)
     fbtm = fmolall[2,1] = GridLayout(1, 2)
     molall = data(df) * visual(Scatter, markersize = 10, colormap = uniqcolors_prp) * xymap * mapping(color = :prp_ind => "Filter") + randguess
     # molall2 = data(df) * AlgebraOfGraphics.density() * visual(Contour) * xymap * mapping(color = :prp => "Filter") + randguess
-    draw2Dscatter = draw!(ftop[1, 1], molall; axis = (title = MO23a.by_trial, ))
+    draw2Dscatter = draw!(ftop[1, 1], molall; axis = (title = "With stations: $(MO23a.by_trial); Training-window length: $(MO23a.by_train)", ))
     # draw!(fmolall[1, 2], molall2)
     
     

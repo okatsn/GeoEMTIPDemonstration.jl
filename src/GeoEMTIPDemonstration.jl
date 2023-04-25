@@ -39,7 +39,7 @@ include("figure/figure23_traintestpart.jl")
 export TrainTestPartition23a
 
 include("figure/figure23_molchan.jl")
-export MolchanOverallComposite23a
+export MolchanComposite23a
 
 
 
