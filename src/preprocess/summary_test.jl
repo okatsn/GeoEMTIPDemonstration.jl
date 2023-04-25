@@ -1,4 +1,3 @@
-abstract type Preprocessed end
 
 
 struct Prep202304 <: Preprocessed

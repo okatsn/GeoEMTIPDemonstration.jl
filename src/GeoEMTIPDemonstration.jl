@@ -1,6 +1,10 @@
 module GeoEMTIPDemonstration
 
-# Write your package code here.
+# # Load abstract type for preprocessing and figureplot
+# Please refer these abstract types when working on src code under figure/ and preprocess/ 
+include("abstractprepfig.jl")
+export Preprocessed, InformationForFigure
+
 
 using DrWatson
 include("projectdir.jl")
@@ -24,11 +28,12 @@ using OkDataFrameTools
 include("viewgroup.jl")
 export viewgroup
 
-
 # figureplot
 using OkMakieToolkits, CairoMakie, AlgebraOfGraphics, OkDataFrameTools
 include("figure/figure23_traintestpart.jl")
 export TrainTestPartition23a
+
+include("figure/figure23_molchan.jl")
 export MolchanOverallComposite23a
 
 
