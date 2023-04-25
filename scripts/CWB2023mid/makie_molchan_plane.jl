@@ -20,12 +20,8 @@ df = vcat(
 
 P = prep202304!(df)
 # Colors:
-uniqcolors_frc = CairoMakie.cgrad(:tab20, length(P.uniqfrc), categorical = true)
-uniqcolors_prp = CairoMakie.cgrad(:rainbow, length(P.uniqprp), categorical = true)
-to_frccolor(i) = uniqcolors_frc[i]
-to_prpcolor(i) = uniqcolors_prp[i]
 
-transform!(df, :frc_ind => ByRow(to_frccolor) => :frc_color) # :frc_color is intended to solve the problem in stacking histogram (not stacking barplots; they are fine). However, mapping :frc_color to AlgebraOfGraphics.histogram (which somehow allows stacked histogram) failed.
+CF23 = ColorsFigure23(P; frccolor = :rainbow, prpcolor = :Paired_4)
 
 @assert isequal(P.table, df)
 
@@ -61,13 +57,13 @@ function label_DcPrp!(f2)
     Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
 
-f1 = Figure(; resolution = (800, 800))
+f1 = Figure(; resolution = (800, 1150))
 pl_plots =  f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 colsize!(f1.layout, 1, Relative(3/4))
 plt = data(dfcb) * # data
     (
-        visual(BarPlot, colormap = uniqcolors_frc) * 
+        visual(BarPlot, colormap = CF23.frc.colormap) * 
         mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2, 
                 stack = :frc_ind, 
                 color = :frc_ind => "Trial (Forecasting phase)") * 
@@ -76,7 +72,7 @@ plt = data(dfcb) * # data
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(pl_plots)
 Legend(pl_legend[:, :], 
-    [PolyElement(polycolor = color) for color in uniqcolors_frc], 
+    [PolyElement(polycolor = color) for color in  CF23.frc.colormap], 
     P.uniqfrc,
     "Forecasting phase",
     labelsize = 14,
@@ -90,7 +86,7 @@ dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmea
 dropnanmissing!(dfcb2)
 content2 = data(dfcb2) * 
     (
-        visual(BarPlot, colormap = uniqcolors_frc) * 
+        visual(BarPlot, colormap =  CF23.frc.colormap) * 
         mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
@@ -122,6 +118,21 @@ f3
 Makie.save("FittingDegree_hist_overall.png", f3)
 
 
+# # Molchan Diagram
+# ## All in one single plot
+MolchanOverallComposite23a(P, "mix", CF23) |> figureplot
+MolchanOverallComposite23a(P, "GE" , CF23) |> figureplot
+MolchanOverallComposite23a(P, "GM" , CF23) |> figureplot
+# TODO: 
+# - there is a problem in group GM, see the plot!
+# - train_yr of 7 and 3 are mixed!
+
+# KEYNOTE:
+# - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
+# `AlgebraOfGraphic.density` use `KernelDensity.kde((df.AlarmedRateForecasting, df.MissingRateForecasting))`
+
+
+
 # # Molchan diagram
 # Keys for AOG:
 # - [How to combine AlgebraOfGraphics with plain Makie plots?](https://aog.makie.org/stable/FAQs/#How-to-combine-AlgebraOfGraphics-with-plain-Makie-plots?)
@@ -141,36 +152,13 @@ for dfg in groupby(df, :frc)
     nr = nr + 1
 end
 
-# # AlgebraOfGraphic
-# ## All in one single plot
-MolchanOverallComposite23a(P, "mix", uniqcolors_prp) |> figureplot
-MolchanOverallComposite23a(P, "GE" , uniqcolors_prp) |> figureplot
-MolchanOverallComposite23a(P, "GM" , uniqcolors_prp) |> figureplot
-# TODO: 
-# - there is a problem in group GM, see the plot!
-# - train_yr of 7 and 3 are mixed!
-
-# KEYNOTE:
-# - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
-# `AlgebraOfGraphic.density` use `KernelDensity.kde((df.AlarmedRateForecasting, df.MissingRateForecasting))`
-
-
-
-
-
-
-
-
-
-
-
 molplane_scatter = data(df) * xymap
 
 # ### colored by group *prp*:
 # scatter plot 
 set_aog_theme!()
 axis = (width = 225, height = 225)
-molplane_scatter * visual(colormap = uniqcolors_prp) * mapping(color = :prp_ind) |> draw  # Noted that layer_basic can be ignored
+molplane_scatter * visual(colormap = CF23.prp.colormap) * mapping(color = :prp_ind) |> draw  # Noted that layer_basic can be ignored
 
 # contour plot 
 layer_contour = AlgebraOfGraphics.density() * visual(Contour)
@@ -194,10 +182,10 @@ molp_all |> p -> draw(p; axis = (width = 225, height = 225))
 
 
 
-# plot_elements = visual(Scatter, color = uniqcolors_prp[1]) +  AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense)
+# plot_elements = visual(Scatter, color = CF23.prp.colormap[1]) +  AlgebraOfGraphics.density() * visual(Contour, levels = 5, colormap = :dense)
 plot_elements = [
     AlgebraOfGraphics.density(npoints = 50) * visual(colormap = :grayC),
-    visual(Scatter, color = (uniqcolors_prp[3], 1), markersize = 3), 
+    visual(Scatter, color = (CF23.prp.colormap[3], 1), markersize = 3), 
 ]
 figs_data = [data(dfg) for dfg in groupby(df, :figure)]
 figs = figs_data .* 

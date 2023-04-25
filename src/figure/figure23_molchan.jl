@@ -1,14 +1,14 @@
 struct MolchanOverallComposite23a <: InformationForFigure
     P::Prep202304
     by_trial::String
-    prpcolor
+    prpcolor::ColorsFigure23
 end
 
 function figureplot(MO23a::MolchanOverallComposite23a)
     df = groupby(MO23a.P.table, :trial)[(trial = MO23a.by_trial, )]
     
     df = dropnanmissing!(DataFrame(deepcopy(df)))
-    uniqcolors_prp = MO23a.prpcolor
+    uniqcolors_prp = MO23a.prpcolor.prp.colormap
     xymap = mapping(
         :AlarmedRateForecasting => identity => "alarmed rate",
         :MissingRateForecasting => identity => "missing rate",
@@ -24,7 +24,7 @@ function figureplot(MO23a::MolchanOverallComposite23a)
     fbtm = fmolall[2,1] = GridLayout(1, 2)
     molall = data(df) * visual(Scatter, markersize = 10, colormap = uniqcolors_prp) * xymap * mapping(color = :prp_ind => "Filter") + randguess
     # molall2 = data(df) * AlgebraOfGraphics.density() * visual(Contour) * xymap * mapping(color = :prp => "Filter") + randguess
-    draw2Dscatter = draw!(ftop[1, 1], molall)
+    draw2Dscatter = draw!(ftop[1, 1], molall; axis = (title = MO23a.by_trial, ))
     # draw!(fmolall[1, 2], molall2)
     
     

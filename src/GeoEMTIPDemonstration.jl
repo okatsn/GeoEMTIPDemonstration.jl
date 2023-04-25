@@ -3,7 +3,7 @@ module GeoEMTIPDemonstration
 # # Load abstract type for preprocessing and figureplot
 # Please refer these abstract types when working on src code under figure/ and preprocess/ 
 include("abstractprepfig.jl")
-export Preprocessed, InformationForFigure
+export Preprocessed, InformationForFigure, ColormapRef
 
 using Dates
 include("to_days.jl")
@@ -31,6 +31,9 @@ include("viewgroup.jl")
 export viewgroup
 
 # figureplot
+include("figure/figure23_colors.jl")
+export ColorsFigure23
+
 using OkMakieToolkits, CairoMakie, AlgebraOfGraphics, OkDataFrameTools, Statistics
 include("figure/figure23_traintestpart.jl")
 export TrainTestPartition23a
