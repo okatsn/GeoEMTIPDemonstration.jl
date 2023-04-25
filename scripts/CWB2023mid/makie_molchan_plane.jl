@@ -81,7 +81,7 @@ f1
 
 Makie.save("FittingDegree_by=frcphase_layout=2x2.png", f1)
 
-f2 = Figure()
+f2 = Figure(; resolution = (800, 550))
 dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
 dropnanmissing!(dfcb2)
 content2 = data(dfcb2) * 
@@ -110,7 +110,7 @@ end
 
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
-f3 = Figure()
+f3 = Figure(; resolution = (800, 550))
 histogram_all = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial)
 draw!(f3, histogram_all)
 label_DcHist!(f3)
