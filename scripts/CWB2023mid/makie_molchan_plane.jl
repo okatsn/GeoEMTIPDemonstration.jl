@@ -21,7 +21,7 @@ df = vcat(
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P; frccolor = :rainbow, prpcolor = :Set1_4)
+CF23 = ColorsFigure23(P; frccolor = :tab20, prpcolor = :Set1_4)
 
 @assert isequal(P.table, df)
 
@@ -120,14 +120,12 @@ Makie.save("FittingDegree_hist_overall.png", f3)
 
 # # Molchan Diagram
 # ## All in one single plot
-MolchanComposite23a(P, "mix", 3, CF23) |> figureplot
-MolchanComposite23a(P, "GE" , 3, CF23) |> figureplot
-MolchanComposite23a(P, "GM" , 3, CF23) |> figureplot
-
-
-MolchanComposite23a(P, "mix", 7, CF23) |> figureplot
-MolchanComposite23a(P, "GE" , 7, CF23) |> figureplot
-MolchanComposite23a(P, "GM" , 7, CF23) |> figureplot
+MolchanComposite23a(P, "mix", 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_mix.png", f)
+MolchanComposite23a(P, "GE" , 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_GE.png", f)
+MolchanComposite23a(P, "GM" , 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_GM.png", f)
+MolchanComposite23a(P, "mix", 7, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_7yr_mix.png", f)
+MolchanComposite23a(P, "GE" , 7, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_7yr_GE.png", f)
+MolchanComposite23a(P, "GM" , 7, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_7yr_GM.png", f)
 
 # KEYNOTE:
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
