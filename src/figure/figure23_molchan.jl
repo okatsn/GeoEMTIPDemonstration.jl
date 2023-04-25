@@ -1,14 +1,14 @@
 struct MolchanOverallComposite23a <: InformationForFigure
     P::Prep202304
     by_trial::String
-    prpcolor::ColorsFigure23
+    CF23::ColorsFigure23
 end
 
 function figureplot(MO23a::MolchanOverallComposite23a)
     df = groupby(MO23a.P.table, :trial)[(trial = MO23a.by_trial, )]
     
     df = dropnanmissing!(DataFrame(deepcopy(df)))
-    uniqcolors_prp = MO23a.prpcolor.prp.colormap
+    uniqcolors_prp = MO23a.CF23.prp.colormap
     xymap = mapping(
         :AlarmedRateForecasting => identity => "alarmed rate",
         :MissingRateForecasting => identity => "missing rate",
@@ -35,7 +35,7 @@ function figureplot(MO23a::MolchanOverallComposite23a)
         vcat(
             [MarkerElement(color = clri, marker = '•', markersize = 30) for clri in uniqcolors_prp], 
             [LineElement(;randlinekwargs...)]), 
-        vcat(MO23a.P.uniqprp, ["random guess"])
+        vcat(MO23a.CF23.prp.colortag, ["random guess"])
     )
     
     colorbar!(fbtm[1, 2], draw2Dcountour; tellheight = false, vertical = true)
