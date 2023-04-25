@@ -10,9 +10,10 @@ function figureplot(TTP23a::TrainTestPartition23a; resolution = (700, 300))
     uniqfrc_Nyr = TTP23a.uniqfrc
     nyr = TTP23a.train_yr
     THBsNyr = [TwoHBoxes(Dates.Year(nyr), dt0, dt1-dt0, label) for ((dt0, dt1), label) in zip(dttag2datetime.(uniqfrc_Nyr), uniqfrc_Nyr)]
-
+    theunit = [THB.unit for THB in THBsNyr] |> unique |> only
+    approxlenfrc = [THB.right - THB.middle for THB in THBsNyr] |> mean |> round |> Int |> theunit |> Dates.canonicalize |> to_days
     f0Nyr = Figure(; resolution = resolution)
-    ax0N = Axis(f0Nyr[1,1])
+    ax0N = Axis(f0Nyr[1,1]; title="Validation", subtitle = "training window length: $(TTP23a.train_yr) years; testing window length ~ $approxlenfrc")
     tb = twohstackedboxes!(ax0N, THBsNyr)
     setyticks!(ax0N, THBsNyr)
     datetimeticks!(ax0N, THBsNyr, Month(6))
@@ -25,6 +26,5 @@ function figureplot(TTP23a::TrainTestPartition23a; resolution = (700, 300))
     )
     display(f0Nyr)
     (ax0N, f0Nyr)
-    
 end
 

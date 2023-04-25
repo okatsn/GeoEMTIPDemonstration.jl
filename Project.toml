@@ -20,6 +20,7 @@ NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 OkDataFrameTools = "44fb8f6e-77e3-42fb-a351-fd44f2ba0634"
 OkFiles = "b25a35d4-863d-483c-9fa1-95480bd075d2"
 OkMakieToolkits = "4e74b330-6242-4c7a-bc50-5dcf56e2fdec"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 AlgebraOfGraphics = "0.6.14"

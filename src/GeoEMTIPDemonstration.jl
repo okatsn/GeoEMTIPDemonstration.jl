@@ -5,6 +5,8 @@ module GeoEMTIPDemonstration
 include("abstractprepfig.jl")
 export Preprocessed, InformationForFigure
 
+using Dates
+include("to_days.jl")
 
 using DrWatson
 include("projectdir.jl")
@@ -29,7 +31,7 @@ include("viewgroup.jl")
 export viewgroup
 
 # figureplot
-using OkMakieToolkits, CairoMakie, AlgebraOfGraphics, OkDataFrameTools
+using OkMakieToolkits, CairoMakie, AlgebraOfGraphics, OkDataFrameTools, Statistics
 include("figure/figure23_traintestpart.jl")
 export TrainTestPartition23a
 
