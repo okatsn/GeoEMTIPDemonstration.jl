@@ -23,7 +23,7 @@ function figureplot(MO23a::MolchanComposite23a)
     fmolall = Figure(; resolution=(750, 800))
     ftop = fmolall[1,1] = GridLayout(1, 2)
     fbtm = fmolall[2,1] = GridLayout(1, 2)
-    molall = data(df) * visual(Scatter, markersize = 10, colormap = uniqcolors_prp) * xymap * mapping(color = :prp_ind => "Filter") + randguess
+    molall = data(df) * visual(Scatter, markersize = 6, colormap = uniqcolors_prp) * xymap * mapping(color = :prp_ind => "Filter") + randguess
     # molall2 = data(df) * AlgebraOfGraphics.density() * visual(Contour) * xymap * mapping(color = :prp => "Filter") + randguess
     draw2Dscatter = draw!(ftop[1, 1], molall; axis = (title = "With stations: $(MO23a.by_trial); Training-window length: $(MO23a.by_train)", ))
     # draw!(fmolall[1, 2], molall2)
