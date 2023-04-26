@@ -13,7 +13,7 @@ function figureplot(TTP23a::TrainTestPartition23a; resolution = (700, 300))
     theunit = [THB.unit for THB in THBsNyr] |> unique |> only
     approxlenfrc = [THB.right - THB.middle for THB in THBsNyr] |> mean |> round |> Int |> theunit |> Dates.canonicalize |> to_days
     f0Nyr = Figure(; resolution = resolution)
-    ax0N = Axis(f0Nyr[1,1]; title="Validation", subtitle = "training window length: $(TTP23a.train_yr) years; testing window length ~ $approxlenfrc")
+    ax0N = Axis(f0Nyr[1,1]; title="Validation data partition", subtitle = "training window length: $(TTP23a.train_yr) years; testing window length ~ $approxlenfrc")
     tb = twohstackedboxes!(ax0N, THBsNyr)
     setyticks!(ax0N, THBsNyr)
     datetimeticks!(ax0N, THBsNyr, Month(6))
