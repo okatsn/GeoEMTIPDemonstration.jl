@@ -28,12 +28,9 @@ CF23 = ColorsFigure23(P; frccolor = :tab20, prpcolor = Makie.wong_colors())
 tablegpbytrainyr = groupby(P.table, :train_yr)
 uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique 
 
-TTP7yr = TrainTestPartition23a(uniqfrc_7yr, 7)
 TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
 (ax0a, f0a) = figureplot(TTP3yr; resolution = (800, 600))
-(ax0b, f0b) = figureplot(TTP7yr; resolution = (800, 400))
 Makie.save("Train_Test_Partitions_3years.png", f0a)
-Makie.save("Train_Test_Partitions_7years.png", f0b)
 
 
 
