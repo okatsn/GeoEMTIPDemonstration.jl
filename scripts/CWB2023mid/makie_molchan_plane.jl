@@ -8,9 +8,6 @@ using OkMakieToolkits
 using OkDataFrameTools
 using GeoEMTIPDemonstration
 using Dates
-# df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mx_3yr_180d.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
-# df_ge3 = CSV.read(dir_cwb2023mid("summary_test_ge_3yr_180d.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
-# df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
 df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mx_3yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
 df_ge3 = CSV.read(dir_cwb2023mid("summary_test_ge_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
 df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
