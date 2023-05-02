@@ -16,8 +16,12 @@ df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d_500md.csv"), DataFram
 # df_gm7 = CSV.read(dir_cwb2023mid("summary_test_gm_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 7)
 
 df = vcat(
-    # df_mx7, df_ge7, df_gm7,
+    # df_mx7, df_ge7, df_gm7, # SETME: add 7-year data
     df_mx3, df_ge3, df_gm3)
+
+# SETME: filter some data
+filter!(:prp => (x -> x != "BP_35"), df)
+
 
 P = prep202304!(df)
 # Colors:
@@ -76,8 +80,7 @@ Legend(pl_legend[:, :],
     labelsize = 14,
     tellheight = false, tellwidth = true, halign = :left, valign = :center)
 f1
-
-Makie.save("FittingDegree_by=frcphase_layout=2x2.png", f1)
+Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 f2 = Figure(; resolution = (800, 550))
 dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
@@ -91,7 +94,7 @@ content2 = data(dfcb2) *
 draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(f2)
 f2
-Makie.save("FittingDegree_with=nanmean_layout=2x2.png", f2)
+Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
 # CHECKPOINT: 
 # - Write docstring in OkMakieToolkits
@@ -113,7 +116,7 @@ histogram_all = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * 
 draw!(f3, histogram_all)
 label_DcHist!(f3)
 f3
-Makie.save("FittingDegree_hist_overall.png", f3)
+Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 
 
@@ -126,7 +129,7 @@ hehe = draw!(f4, histogram_4)
 label_DcHist!(f4)
 legend!(f4[0, end], hehe; valign = :top) # ;orientation = :horizontal, tellwidth = false
 f4 
-Makie.save("FittingDegree_hist_by_frc.png", f4)
+Makie.save("FittingDegree_hist_colored_by_frc.png", f4)
 # KEYNOTE:
 # - AlgebraOfGraphics.histogram() * mapping results in `Combined{barplot}`
 # - `mapping(:FittingDegree, color=:frc_color , stack=:frc_ind) *` causes error
