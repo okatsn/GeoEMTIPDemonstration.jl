@@ -8,19 +8,16 @@ using OkMakieToolkits
 using OkDataFrameTools
 using GeoEMTIPDemonstration
 using Dates
-# df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mx_3yr_180d.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
-# df_ge3 = CSV.read(dir_cwb2023mid("summary_test_ge_3yr_180d.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
-# df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
 df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mx_3yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
 df_ge3 = CSV.read(dir_cwb2023mid("summary_test_ge_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
 df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
-df_mx7 = CSV.read(dir_cwb2023mid("summary_test_mx_7yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 7)
-df_ge7 = CSV.read(dir_cwb2023mid("summary_test_ge_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 7)
-df_gm7 = CSV.read(dir_cwb2023mid("summary_test_gm_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 7)
+# df_mx7 = CSV.read(dir_cwb2023mid("summary_test_mx_7yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 7)
+# df_ge7 = CSV.read(dir_cwb2023mid("summary_test_ge_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 7)
+# df_gm7 = CSV.read(dir_cwb2023mid("summary_test_gm_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 7)
 
 df = vcat(
-    df_mx3, df_ge3, df_gm3, 
-    df_mx7, df_ge7, df_gm7)
+    # df_mx7, df_ge7, df_gm7,
+    df_mx3, df_ge3, df_gm3)
 
 P = prep202304!(df)
 # Colors:
@@ -33,15 +30,11 @@ CF23 = ColorsFigure23(P; frccolor = :jet, prpcolor = Makie.wong_colors())
 
 
 tablegpbytrainyr = groupby(P.table, :train_yr)
-uniqfrc_7yr = tablegpbytrainyr[(train_yr = 7, )].frc |> unique 
 uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique 
 
-TTP7yr = TrainTestPartition23a(uniqfrc_7yr, 7)
 TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
 (ax0a, f0a) = figureplot(TTP3yr; resolution = (800, 600))
-(ax0b, f0b) = figureplot(TTP7yr; resolution = (800, 400))
 Makie.save("Train_Test_Partitions_3years.png", f0a)
-Makie.save("Train_Test_Partitions_7years.png", f0b)
 
 
 
@@ -62,7 +55,7 @@ function label_DcPrp!(f2)
     Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
 
-f1 = Figure(; resolution = (800, 1150))
+f1 = Figure(; resolution = (800, 800))
 pl_plots =  f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 colsize!(f1.layout, 1, Relative(3/4))
@@ -151,9 +144,6 @@ Makie.save("FittingDegree_hist_by_frc.png", f4)
 MolchanComposite23a(P, "mix", 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_mix.png", f)
 MolchanComposite23a(P, "GE" , 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_GE.png", f)
 MolchanComposite23a(P, "GM" , 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_GM.png", f)
-MolchanComposite23a(P, "mix", 7, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_7yr_mix.png", f)
-MolchanComposite23a(P, "GE" , 7, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_7yr_GE.png", f)
-MolchanComposite23a(P, "GM" , 7, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_7yr_GM.png", f)
 
 # KEYNOTE:
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
