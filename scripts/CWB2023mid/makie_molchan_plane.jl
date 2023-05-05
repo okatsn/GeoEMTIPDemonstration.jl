@@ -18,6 +18,9 @@ df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d_500md.csv"), DataFram
 df = vcat(
     # df_mx7, df_ge7, df_gm7, # SETME: add 7-year data
     df_mx3, df_ge3, df_gm3)
+# `dropnanmissing!` is required to avoid contour plot error 
+# TODO: consider deprecate `dropnanmissing!` in `figureplot` 
+dropnanmissing!(df)
 
 # SETME: filter some data
 filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
@@ -139,14 +142,31 @@ Makie.save("FittingDegree_hist_colored_by_frc.png", f4)
 # - The default Makie color is Makie.wong_colors(), which has a length of 7; if the number of categories is larger than 7, you will see duplicated color patches.
 
 
+f5 = Figure(; resolution = (800, 800))
 
+# additional abline
+randlinekwargs = (color = "red", linestyle = :dashdot)
+randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; randlinekwargs...) * mapping(:x => "alarmed rate", :y => "missing rate")
 
+xymap = mapping(
+        :AlarmedRateForecasting => identity => "alarmed rate",
+        :MissingRateForecasting => identity => "missing rate",
+)
 
-# # Molchan Diagram
-# ## All in one single plot
-MolchanComposite23a(P, "mix", 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_mix.png", f)
-MolchanComposite23a(P, "GE" , 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_GE.png", f)
-MolchanComposite23a(P, "GM" , 3, CF23) |> figureplot |> f -> Makie.save("MolchanDiagram_all_3yr_GM.png", f)
+visual_scatter_contour = 
+    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5) + 
+    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.1)
+
+manymolchan = data(P.table) * 
+    visual_scatter_contour * 
+    mapping(color = :trial, marker = :trial) *
+    mapping(layout = :frc => "Forecasting Phase") * 
+    xymap + randguess
+
+plt5 = draw!(f5[1,1], manymolchan)
+AlgebraOfGraphics.legend!(f5[1,2], plt5)
+f5
+
 
 # KEYNOTE:
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
