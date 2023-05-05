@@ -7,12 +7,12 @@ end
 
 
 """
-`uniqcol = uniqsomething!(df, col)` add new column "$(col)_ind" as the integer indices for a vector of string `uniqcol`.
+`uniqcol = uniqsomething!(df, col)` add new column "\$(col)_ind" as the integer indices for a vector of string `uniqcol`.
 """
 function uniqsomething!(df, col)
     uniqprp = string.(unique(df[:, col]))
     toindex_prp = str -> toindex(str, uniqprp)
-    transform!(df, :prp => ByRow(toindex_prp) => Symbol("$(col)_ind"))
+    transform!(df, col => ByRow(toindex_prp) => Symbol("$(col)_ind"))
     return uniqprp
 end
 
