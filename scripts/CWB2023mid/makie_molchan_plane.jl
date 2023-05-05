@@ -62,16 +62,17 @@ function label_DcPrp!(f2)
     Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
 
-f1 = Figure(; resolution = (800, 600))
+f1 = Figure(; resolution = (1000, 600))
 pl_plots =  f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
+
 colsize!(f1.layout, 1, Relative(3/4))
 plt = data(dfcb) * # data
     (
-        visual(BarPlot, colormap = CF23.frc.colormap) * 
-        mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2, 
-                dodge = :frc_ind, # dodge or stack
-                color = :frc_ind => "Trial (Forecasting phase)") * 
+        visual(BarPlot, colormap = CF23.frc.colormap, strokewidth = 0.7) * 
+        mapping(color = :frc_ind) *
+        mapping(:frc_ind => "Forecasting Phase", 
+                :FittingDegreeMOM => identity => ylabel2) *
     mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
     )
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
