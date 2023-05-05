@@ -29,7 +29,7 @@ filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P; frccolor = :jet, prpcolor = Makie.wong_colors()) 
+CF23 = ColorsFigure23(P) 
 # , prpcolor = :Set1_4
 
 @assert isequal(P.table, df)
@@ -155,19 +155,19 @@ xymap = mapping(
 )
 
 visual_scatter_contour = 
-    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5) + 
-    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.1)
+    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5, colormap = CF23.trial.colormap) + 
+    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.1, colormap = CF23.trial.colormap) # KEYNOTE: again, it is useless to assign colormap.
 
 manymolchan = data(P.table) * 
-    visual_scatter_contour * 
     mapping(color = :trial, marker = :trial) *
+    visual_scatter_contour * 
     mapping(layout = :frc => "Forecasting Phase") * 
     xymap + randguess
 
 plt5 = draw!(f5[1,1], manymolchan)
 AlgebraOfGraphics.legend!(f5[1,2], plt5)
 f5
-
+Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
 
 # KEYNOTE:
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
