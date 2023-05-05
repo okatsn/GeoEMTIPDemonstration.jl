@@ -20,7 +20,7 @@ df = vcat(
     df_mx3, df_ge3, df_gm3)
 
 # SETME: filter some data
-filter!(:prp => (x -> x != "BP_35"), df)
+filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
 
 
 P = prep202304!(df)
@@ -59,7 +59,7 @@ function label_DcPrp!(f2)
     Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
 
-f1 = Figure(; resolution = (800, 800))
+f1 = Figure(; resolution = (800, 600))
 pl_plots =  f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 colsize!(f1.layout, 1, Relative(3/4))
@@ -67,7 +67,7 @@ plt = data(dfcb) * # data
     (
         visual(BarPlot, colormap = CF23.frc.colormap) * 
         mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2, 
-                stack = :frc_ind, 
+                dodge = :frc_ind, # dodge or stack
                 color = :frc_ind => "Trial (Forecasting phase)") * 
     mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
     )
