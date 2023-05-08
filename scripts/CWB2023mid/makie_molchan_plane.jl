@@ -4,16 +4,14 @@ using Statistics
 using LaTeXStrings
 import NaNMath: mean as nanmean
 using Revise
+using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using OkDataFrameTools
 using GeoEMTIPDemonstration
 using Dates
-df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mx_3yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
-df_ge3 = CSV.read(dir_cwb2023mid("summary_test_ge_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
-df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
-# df_mx7 = CSV.read(dir_cwb2023mid("summary_test_mx_7yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 7)
-# df_ge7 = CSV.read(dir_cwb2023mid("summary_test_ge_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 7)
-# df_gm7 = CSV.read(dir_cwb2023mid("summary_test_gm_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 7)
+df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23a", "MIX_3yr_180d_500md") |> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
+df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23a", "GE_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
+df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23a", "GM_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
 
 df = vcat(
     # df_mx7, df_ge7, df_gm7,
