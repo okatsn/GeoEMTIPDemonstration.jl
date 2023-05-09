@@ -9,9 +9,9 @@ using OkMakieToolkits
 using OkDataFrameTools
 using GeoEMTIPDemonstration
 using Dates
-df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23a", "MIX_3yr_180d_500md") |> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
-df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23a", "GE_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
-df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23a", "GM_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
+df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23M03", "MIX_3yr_180d_500md") |> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
+df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23M03", "GE_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
+df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23M03", "GM_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
 
 df = vcat(
     # df_mx7, df_ge7, df_gm7,
@@ -20,7 +20,7 @@ df = vcat(
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P; frccolor = :jet, prpcolor = Makie.wong_colors()) 
+CF23 = ColorsFigure23(P; frccolor = :jet, prpcolor = Makie.wong_colors())
 # , prpcolor = :Set1_4
 
 @assert isequal(P.table, df)
@@ -28,7 +28,7 @@ CF23 = ColorsFigure23(P; frccolor = :jet, prpcolor = Makie.wong_colors())
 
 
 tablegpbytrainyr = groupby(P.table, :train_yr)
-uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique 
+uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique
 
 TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
 (ax0a, f0a) = figureplot(TTP3yr; resolution = (800, 600))
@@ -59,16 +59,16 @@ pl_legend = f1[1, 2] = GridLayout()
 colsize!(f1.layout, 1, Relative(3/4))
 plt = data(dfcb) * # data
     (
-        visual(BarPlot, colormap = CF23.frc.colormap) * 
-        mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2, 
-                stack = :frc_ind, 
-                color = :frc_ind => "Trial (Forecasting phase)") * 
+        visual(BarPlot, colormap = CF23.frc.colormap) *
+        mapping(:prp => repus => xlabel2, :FittingDegreeMOM => ylabel2,
+                stack = :frc_ind,
+                color = :frc_ind => "Trial (Forecasting phase)") *
     mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
     )
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(pl_plots)
-Legend(pl_legend[:, :], 
-    [PolyElement(polycolor = color) for color in  CF23.frc.colormap], 
+Legend(pl_legend[:, :],
+    [PolyElement(polycolor = color) for color in  CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
     labelsize = 14,
@@ -80,9 +80,9 @@ Makie.save("FittingDegree_by=frcphase_layout=2x2.png", f1)
 f2 = Figure(; resolution = (800, 550))
 dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
 dropnanmissing!(dfcb2)
-content2 = data(dfcb2) * 
+content2 = data(dfcb2) *
     (
-        visual(BarPlot, colormap =  CF23.frc.colormap) * 
+        visual(BarPlot, colormap =  CF23.frc.colormap) *
         mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
@@ -91,7 +91,7 @@ label_DcPrp!(f2)
 f2
 Makie.save("FittingDegree_with=nanmean_layout=2x2.png", f2)
 
-# CHECKPOINT: 
+# CHECKPOINT:
 # - Write docstring in OkMakieToolkits
 # - Have a train-test phase plot
 # https://juliadatascience.io/recipe_df
@@ -116,14 +116,14 @@ Makie.save("FittingDegree_hist_overall.png", f3)
 
 
 f4 = Figure(;resolution= (800, 550))
-histogram_4 = data(dfn) * 
-    histogram(bins = 10) * 
-    mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) * 
+histogram_4 = data(dfn) *
+    histogram(bins = 10) *
+    mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) *
     mapping(row = :train_yr => stryear, col = :trial)
-hehe = draw!(f4, histogram_4) 
+hehe = draw!(f4, histogram_4)
 label_DcHist!(f4)
 legend!(f4[0, end], hehe; valign = :top) # ;orientation = :horizontal, tellwidth = false
-f4 
+f4
 Makie.save("FittingDegree_hist_by_frc.png", f4)
 # KEYNOTE:
 # - AlgebraOfGraphics.histogram() * mapping results in `Combined{barplot}`
@@ -149,7 +149,7 @@ MolchanComposite23a(P, "GM" , 3, CF23) |> figureplot |> f -> Makie.save("Molchan
 
 
 # dfa = groupby(P.table, :trial)[(trial = "GM", )]
-    
+
 # dfan = dropnanmissing!(DataFrame(deepcopy(dfa)))
 
 # be = KernelDensity.kde((dfan.AlarmedRateForecasting, dfan.MissingRateForecasting))
