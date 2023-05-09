@@ -6,20 +6,18 @@ import NaNMath: mean as nanmean
 using Revise
 using OkMakieToolkits
 using OkDataFrameTools
+using CWBProjectSummaryDatasets
 using GeoEMTIPDemonstration
 using Dates
-df_mx3 = CSV.read(dir_cwb2023mid("summary_test_mx_3yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
-df_ge3 = CSV.read(dir_cwb2023mid("summary_test_ge_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
-df_gm3 = CSV.read(dir_cwb2023mid("summary_test_gm_3yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
-# df_mx7 = CSV.read(dir_cwb2023mid("summary_test_mx_7yr_180d_500md.csv"), DataFrame)|> df -> insertcols!(df, :trial => "mix",  :train_yr => 7)
-# df_ge7 = CSV.read(dir_cwb2023mid("summary_test_ge_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GE" , :train_yr => 7)
-# df_gm7 = CSV.read(dir_cwb2023mid("summary_test_gm_7yr_180d_500md.csv"), DataFrame) |> df -> insertcols!(df, :trial => "GM" , :train_yr => 7)
+df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23A19", "MIX_3yr_180d_500md") |> df -> insertcols!(df, :trial => "mix",  :train_yr => 3)
+df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23A19", "GE_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GE" , :train_yr => 3)
+df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23A19", "GM_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
 
 df = vcat(
     # df_mx7, df_ge7, df_gm7, # SETME: add 7-year data
     df_mx3, df_ge3, df_gm3)
-# `dropnanmissing!` is required to avoid contour plot error 
-# TODO: consider deprecate `dropnanmissing!` in `figureplot` 
+# `dropnanmissing!` is required to avoid contour plot error
+# TODO: consider deprecate `dropnanmissing!` in `figureplot`
 dropnanmissing!(df)
 
 # SETME: filter some data
@@ -29,7 +27,7 @@ filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P) 
+CF23 = ColorsFigure23(P)
 # , prpcolor = :Set1_4
 
 @assert isequal(P.table, df)
@@ -37,7 +35,7 @@ CF23 = ColorsFigure23(P)
 
 
 tablegpbytrainyr = groupby(P.table, :train_yr)
-uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique 
+uniqfrc_3yr = tablegpbytrainyr[(train_yr = 3, )].frc |> unique
 
 TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
 (ax0a, f0a) = figureplot(TTP3yr; resolution = (800, 600))
@@ -69,16 +67,16 @@ pl_legend = f1[1, 2] = GridLayout()
 colsize!(f1.layout, 1, Relative(3/4))
 plt = data(dfcb) * # data
     (
-        visual(BarPlot, colormap = CF23.frc.colormap, strokewidth = 0.7) * 
+        visual(BarPlot, colormap = CF23.frc.colormap, strokewidth = 0.7) *
         mapping(color = :frc_ind) *
-        mapping(:frc_ind => "Forecasting Phase", 
+        mapping(:frc_ind => "Forecasting Phase",
                 :FittingDegreeMOM => identity => ylabel2) *
     mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
     )
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(pl_plots)
-Legend(pl_legend[:, :], 
-    [PolyElement(polycolor = color) for color in  CF23.frc.colormap], 
+Legend(pl_legend[:, :],
+    [PolyElement(polycolor = color) for color in  CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
     labelsize = 14,
@@ -89,9 +87,9 @@ Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 f2 = Figure(; resolution = (800, 550))
 dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
 dropnanmissing!(dfcb2)
-content2 = data(dfcb2) * 
+content2 = data(dfcb2) *
     (
-        visual(BarPlot, colormap =  CF23.frc.colormap) * 
+        visual(BarPlot, colormap =  CF23.frc.colormap) *
         mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
@@ -100,7 +98,7 @@ label_DcPrp!(f2)
 f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
-# CHECKPOINT: 
+# CHECKPOINT:
 # - Write docstring in OkMakieToolkits
 # - Have a train-test phase plot
 # https://juliadatascience.io/recipe_df
@@ -125,14 +123,14 @@ Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 
 f4 = Figure(;resolution= (800, 550))
-histogram_4 = data(dfn) * 
-    histogram(bins = 10) * 
-    mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) * 
+histogram_4 = data(dfn) *
+    histogram(bins = 10) *
+    mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) *
     mapping(row = :train_yr => stryear, col = :trial)
-hehe = draw!(f4, histogram_4) 
+hehe = draw!(f4, histogram_4)
 label_DcHist!(f4)
 legend!(f4[0, end], hehe; valign = :top) # ;orientation = :horizontal, tellwidth = false
-f4 
+f4
 Makie.save("FittingDegree_hist_colored_by_frc.png", f4)
 # KEYNOTE:
 # - AlgebraOfGraphics.histogram() * mapping results in `Combined{barplot}`
@@ -154,14 +152,14 @@ xymap = mapping(
         :MissingRateForecasting => identity => "missing rate",
 )
 
-visual_scatter_contour = 
-    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5, colormap = CF23.trial.colormap) + 
+visual_scatter_contour =
+    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5, colormap = CF23.trial.colormap) +
     visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.1, colormap = CF23.trial.colormap) # KEYNOTE: again, it is useless to assign colormap.
 
-manymolchan = data(P.table) * 
+manymolchan = data(P.table) *
     mapping(color = :trial, marker = :trial) *
-    visual_scatter_contour * 
-    mapping(layout = :frc => "Forecasting Phase") * 
+    visual_scatter_contour *
+    mapping(layout = :frc => "Forecasting Phase") *
     xymap + randguess
 
 plt5 = draw!(f5[1,1], manymolchan)
@@ -175,7 +173,7 @@ Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
 
 
 # dfa = groupby(P.table, :trial)[(trial = "GM", )]
-    
+
 # dfan = dropnanmissing!(DataFrame(deepcopy(dfa)))
 
 # be = KernelDensity.kde((dfan.AlarmedRateForecasting, dfan.MissingRateForecasting))
