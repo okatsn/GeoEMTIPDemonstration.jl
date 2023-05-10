@@ -27,7 +27,7 @@ filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P)
+CF23 = ColorsFigure23(P) # ; trialcolor = :Dark2_3
 # , prpcolor = :Set1_4
 
 @assert isequal(P.table, df)
@@ -153,8 +153,8 @@ xymap = mapping(
 )
 
 visual_scatter_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5, colormap = CF23.trial.colormap) +
-    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.1, colormap = CF23.trial.colormap) # KEYNOTE: again, it is useless to assign colormap.
+    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5) +
+    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.5)
 
 manymolchan = data(P.table) *
     mapping(color = :trial, marker = :trial) *
@@ -162,6 +162,7 @@ manymolchan = data(P.table) *
     mapping(layout = :frc => "Forecasting Phase") *
     xymap + randguess
 
+set_aog_pallete!(CF23.trial)
 plt5 = draw!(f5[1,1], manymolchan)
 AlgebraOfGraphics.legend!(f5[1,2], plt5)
 f5
