@@ -7,8 +7,8 @@ end
 
 function ColorsFigure23(P::Prep202304;
                 frccolor = :jet,
-                prpcolor = Makie.wong_colors(),
-                trialcolor = :Set1_3)
+                prpcolor = :Set1_4, # Makie.wong_colors()
+                trialcolor = ["#E10098", "#F48024", "#1db954"]) # other nice candidates: :Set1_3,:Dark2_3
     ColorsFigure23(
         ColormapRef(frccolor, P.uniqfrc),
         ColormapRef(prpcolor, P.uniqprp),

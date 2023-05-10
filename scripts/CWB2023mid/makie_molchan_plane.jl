@@ -27,9 +27,7 @@ filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
 P = prep202304!(df)
 # Colors:
 
-CF23 = ColorsFigure23(P) # ; trialcolor = :Dark2_3
-# , prpcolor = :Set1_4
-
+CF23 = ColorsFigure23(P)
 @assert isequal(P.table, df)
 
 
@@ -154,7 +152,7 @@ xymap = mapping(
 
 visual_scatter_contour =
     AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5) +
-    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.5)
+    visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.3)
 
 manymolchan = data(P.table) *
     mapping(color = :trial, marker = :trial) *
