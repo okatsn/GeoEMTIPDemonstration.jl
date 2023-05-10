@@ -112,7 +112,10 @@ end
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
 f3 = Figure(; resolution = (800, 550))
-histogram_all = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial)
+
+histogram_all = data(dfn) * (visual(Hist, bins = 15) + mean() * visual(VLines)
+) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial)
+
 draw!(f3, histogram_all)
 label_DcHist!(f3)
 f3
@@ -122,7 +125,7 @@ Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 f4 = Figure(;resolution= (800, 550))
 histogram_4 = data(dfn) *
-    histogram(bins = 10) *
+    histogram(bins = 15) *
     mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) *
     mapping(row = :train_yr => stryear, col = :trial)
 hehe = draw!(f4, histogram_4)
