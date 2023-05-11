@@ -87,7 +87,7 @@ dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmea
 dropnanmissing!(dfcb2)
 content2 = data(dfcb2) *
     (
-        visual(BarPlot, colormap =  CF23.frc.colormap) *
+        visual(BarPlot) *
         mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
@@ -95,6 +95,23 @@ draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
 label_DcPrp!(f2)
 f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
+
+
+
+f2a = Figure(; resolution = (550, 450))
+dfcb2a = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
+dropnanmissing!(dfcb2a)
+content2 = data(dfcb2a) *
+        visual(BarPlot) *
+        mapping(:trial => "joint-station set", :FittingDegreeMOT => ylabel2)
+    # mapping(col = :trial, row = :train_yr => stryear)
+draw!(f2a, content2; axis = (xticklabelrotation = 0.2π, ))
+f2a
+Makie.save("FittingDegree_barplot_mono_color_with=nanmean_only_ULF-B.png", f2a)
+
+
+
+
 
 # CHECKPOINT:
 # - Write docstring in OkMakieToolkits
@@ -105,7 +122,7 @@ function label_DcHist!(f2)
     common_setting = (fontsize = 20, font = "Arial bold")
     Label(f2[:, end+1], "training window length"; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
     Label(f2[:, 0],     "number of models"      ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+    Label(f2[0, :],     "joint-station set"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
 
 
@@ -171,7 +188,7 @@ xymap = mapping(
 )
 
 visual_scatter_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels = 3, linewidth = 0.5) +
+    AlgebraOfGraphics.density() * visual(Contour, levels = 5, linewidth = 1, alpha = 0.1) +
     visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.3)
 
 manymolchan = data(P.table) *
