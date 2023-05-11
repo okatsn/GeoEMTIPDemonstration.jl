@@ -5,9 +5,18 @@ mutable struct ColorsFigure23{T<:Union{ColormapRef, Nothing}} <: PlotColors
     trial::T
 end
 
+"""
+`categorical_colors(args...; kwargs...)` creates a vector of colors with by-default `alpha=1.0`; it takes the same `args` and `kwargs` as `CairoMakie.cgrad`.
+"""
+function categorical_colors(args...; alpha=1.0, kwargs...) # alpha is required and it overwrite the ones in kwargs.
+    colors = CairoMakie.cgrad(args...; categorical = true, kwargs...) # to avoid `ERROR: ArgumentError: range(0.0, stop=1.0, length=1): endpoints differ` when the length of colors is 1
+    return RGBAf.(colors, alpha) # See  Makie.wong_colors |> methods
+end
+
+
 function ColorsFigure23(P::Prep202304;
                 frccolor = :jet,
-                prpcolor = :Set1_4, # Makie.wong_colors()
+                prpcolor = categorical_colors(:Set1_4, 4), # Makie.wong_colors()
                 trialcolor = ["#E10098", "#F48024", "#1db954"]) # other nice candidates: :Set1_3,:Dark2_3
     ColorsFigure23(
         ColormapRef(frccolor, P.uniqfrc),
