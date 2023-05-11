@@ -111,13 +111,30 @@ end
 
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
+dcmm = combine(groupby(dfn, [:trial, :train_yr]),
+        :FittingDegree => mean   => "DC_mean",
+        :FittingDegree => median => "DC_median")
 f3 = Figure(; resolution = (800, 550))
 
-histogram_all = data(dfn) * (visual(Hist, bins = 15) + mean() * visual(VLines)
-) * mapping(:FittingDegree) * mapping(row = :train_yr => stryear, col = :trial)
 
-draw!(f3, histogram_all)
+#  |> draw
+
+dchist = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree)
+dcmeanstyle = (color = :red, linestyle = :solid)
+dcmedstyle = (color = :firebrick1, linestyle = :dash)
+dcmean = data(dcmm) *   visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:DC_mean => "mean")
+dcmedian = data(dcmm) * visual(VLines; ymin = 0,  dcmedstyle...) * mapping(:DC_median => "median")
+
+histogram_all = (dchist + dcmean + dcmedian) * mapping(row = :train_yr => stryear, col = :trial)
+
+f3p = draw!(f3, histogram_all)
 label_DcHist!(f3)
+# legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
+Legend(f3[0, end],
+    [[LineElement(;dcmeanstyle...)], [LineElement(;dcmedstyle...)]],
+    ["mean", "median"]
+)
+Label(f3[end+1, :], L"\text{Fitting Degree } D_C"; tellwidth = false)
 f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
