@@ -119,12 +119,23 @@ Makie.save("FittingDegree_barplot_mono_color_with=nanmean_only_ULF-B.png", f2a)
 # - Have a train-test phase plot
 # https://juliadatascience.io/recipe_df
 # ## Distribution of fitting degree
-function label_DcHist!(f2)
+function label_DcHist!(f2;
+        left_label = "number of models",
+        right_label = "variable",
+        top_label = "joint-station set",
+        bottom_label = "variable value"
+        )
     common_setting = (fontsize = 20, font = "Arial bold")
-    Label(f2[:, end+1], "training window length"; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[:, 0],     "number of models"      ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[0, :],     "joint-station set"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+    Label(f2[:, end+1], right_label; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
+    Label(f2[:, 0],     left_label      ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
+    Label(f2[0, :],     top_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+    Label(f2[end+1, :],     bottom_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
+
+legend_f3!(f3) = Legend(f3[0, end],
+    [[LineElement(;dcmeanstyle...)], [LineElement(;dcmedstyle...)]],
+    ["mean", "median"]
+)
 
 
 dfn = deepcopy(df);
@@ -140,24 +151,21 @@ f3histkwargs = ( bins= -0.05:0.05:1.05, )
 dchist = data(dfn) * visual(Hist; f3histkwargs...) * mapping(:FittingDegree)
 dcmeanstyle = (color = :red, linestyle = :solid)
 dcmedstyle = (color = :firebrick1, linestyle = :dash)
+
 dcmean = data(dcmm) *   visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:DC_mean => "mean")
 dcmedian = data(dcmm) * visual(VLines; ymin = 0,  dcmedstyle...) * mapping(:DC_median => "median")
 
 histogram_all = (dchist + dcmean + dcmedian) * mapping(row = :train_yr => stryear, col = :trial)
 
 f3p = draw!(f3, histogram_all)
-label_DcHist!(f3)
+label_DcHist!(f3; right_label = "training window length", bottom_label = L"\text{Fitting Degree } D_C")
 # legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
-Legend(f3[0, end],
-    [[LineElement(;dcmeanstyle...)], [LineElement(;dcmedstyle...)]],
-    ["mean", "median"]
-)
-Label(f3[end+1, :], L"\text{Fitting Degree } D_C"; tellwidth = false)
+legend_f3!(f3)
 f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
-f3a = Figure(; resolution = (800, 700))
 
+f3a = Figure(; resolution = (800, 700))
 df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial])
 df3acb = combine(groupby(df3a, [:trial, :variable]),
         :value => mean,
@@ -169,9 +177,10 @@ median3a = data(df3acb) * visual(VLines; ymin = 0, dcmedstyle...) * mapping(:val
 
 histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row = :variable, col = :trial)
 f3ap = draw!(f3a, histcomb_f3a)
-# CHECKPOINT:
-# - check the code again to see if the plot is correct
-# - have a legend
+label_DcHist!(f3a)
+legend_f3!(f3a)
+f3a
+Makie.save("MissingRateAlarmedRate_hist_overall_mono_color.png", f3a)
 
 
 f4 = Figure(;resolution= (800, 550))
