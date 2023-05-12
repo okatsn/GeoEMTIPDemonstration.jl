@@ -25,6 +25,7 @@ filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
 
 
 P = prep202304!(df)
+transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,x)) => :frc_ind_frc)
 # Colors:
 
 CF23 = ColorsFigure23(P)
@@ -47,7 +48,7 @@ repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
 
-dfcb = combine(groupby(df, [:prp, :frc_ind, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:frc_ind, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
 
 function label_DcHist!(f2;
@@ -196,7 +197,7 @@ f5res = (resolution = (800, 800), )
 xylimits = (-0.05, 1.05)
 f5axkwargs = (titlesize = 13, aspect = 1, xticklabelrotation = 0.2π)
 f5 = Figure(; f5res...)
-transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,x)) => :frc_ind_frc)
+
 # additional abline
 randlinekwargs = (color = "red", linestyle = :dashdot)
 randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; randlinekwargs...) * mapping(:x => "alarmed rate", :y => "missing rate")
