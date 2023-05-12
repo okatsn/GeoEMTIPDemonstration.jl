@@ -2,6 +2,7 @@ using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
 using Statistics
 using LaTeXStrings
+using Printf
 import NaNMath: mean as nanmean
 using Revise
 using OkMakieToolkits
@@ -177,7 +178,7 @@ Makie.save("FittingDegree_hist_colored_by_frc.png", f4)
 
 
 f5 = Figure(; resolution = (800, 800))
-
+transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,x)) => :frc_ind_frc)
 # additional abline
 randlinekwargs = (color = "red", linestyle = :dashdot)
 randguess = data((x = [0, 1], y = [1, 0] )) * visual(Lines; randlinekwargs...) * mapping(:x => "alarmed rate", :y => "missing rate")
@@ -194,11 +195,11 @@ visual_scatter_contour =
 manymolchan = data(P.table) *
     mapping(color = :trial, marker = :trial) *
     visual_scatter_contour *
-    mapping(layout = :frc => "Forecasting Phase") *
+    mapping(layout = :frc_ind_frc => "Forecasting Phase") *
     xymap + randguess
 
 set_aog_pallete!(CF23.trial)
-plt5 = draw!(f5[1,1], manymolchan)
+plt5 = draw!(f5[1,1], manymolchan; axis = (titlesize = 13,))
 AlgebraOfGraphics.legend!(f5[1,2], plt5)
 f5
 Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
