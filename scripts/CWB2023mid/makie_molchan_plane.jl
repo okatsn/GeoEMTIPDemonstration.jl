@@ -62,28 +62,36 @@ Label(f2[:, 0],     left_label      ; rotation = +π/2, tellwidth = true, tellhe
 Label(f2[0, :],     top_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 Label(f2[end+1, :],     bottom_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
+dcmeanstyle = (color = :red, linestyle = :solid)
+dcmedstyle = (color = :firebrick1, linestyle = :dash)
 
 f1 = Figure(; resolution = (1000, 600))
 pl_plots =  f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 
 colsize!(f1.layout, 1, Relative(3/4))
-plt = data(dfcb) * # data
-    (
+rainbowbars = data(dfcb) * # data
         visual(BarPlot, colormap = CF23.frc.colormap, strokewidth = 0.7) *
         mapping(color = :frc_ind) *
-        mapping(:frc_ind => "Forecasting Phase",
-                :FittingDegreeMOM => identity => ylabel2) *
-    mapping(col = :trial) # WARN: it is not allowed to have integer grouping keys.
-    )
+        mapping(:frc_ind,
+                :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
+dfcb_mean = combine(groupby(dfcb, :trial), :FittingDegreeMOM => mean)
+hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
+
+plt = (rainbowbars + hlineofmean) * mapping(col = :trial)
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
-label_DcHist!(pl_plots; left_label = "fitting degree", right_label = "", bottom_label = "")
+label_DcHist!(pl_plots; left_label = "fitting degree", right_label = "", bottom_label = "Forecasting Phase")
 Legend(pl_legend[:, :],
     [PolyElement(polycolor = color) for color in  CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
     labelsize = 14,
     tellheight = false, tellwidth = true, halign = :left, valign = :center)
+Legend(pl_legend[0, end],
+    [[LineElement(;dcmeanstyle...)]],
+    ["overall average"];
+    valign = :top, tellheight = true
+)
 f1
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
@@ -143,8 +151,7 @@ dcmm = combine(groupby(dfn, [:trial]),
         :FittingDegree => median => "DC_median")
 
 dchist = data(dfn) * visual(Hist; f3histkwargs...) * mapping(:FittingDegree)
-dcmeanstyle = (color = :red, linestyle = :solid)
-dcmedstyle = (color = :firebrick1, linestyle = :dash)
+
 
 dcmean = data(dcmm) *   visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:DC_mean => "mean")
 dcmedian = data(dcmm) * visual(VLines; ymin = 0,  dcmedstyle...) * mapping(:DC_median => "median")
