@@ -19,7 +19,7 @@ end
 """
 Given `df = CSV.read("summary_test.csv", DataFrame)`, `prep202304!(df)` calculates the following new columns:
 - `:FittingDegree`
-- `:prp_ind` (for `Makie` plot use) 
+- `:prp_ind` (for `Makie` plot use)
 - `:frc_ind` (for `Makie` plot use)
 """
 function prep202304!(df)
@@ -30,9 +30,9 @@ function prep202304!(df)
 
     transform!(df, :HitRatesForecasting => ByRow(x->1-x) => :MissingRateForecasting)
     transform!(df, [:MissingRateForecasting, :AlarmedRateForecasting] => ByRow((x, y) -> 1-x-y) => :FittingDegree)
-    uniqprp =  uniqsomething!(df, :prp) 
-    uniqfrc =  uniqsomething!(df, :frc) 
-    uniqtrial =  uniqsomething!(df, :trial) 
+    uniqprp =  uniqsomething!(df, :prp)
+    uniqfrc =  uniqsomething!(df, :frc)
+    uniqtrial =  uniqsomething!(df, :trial)
 
     return Prep202304(uniqprp, uniqfrc, uniqtrial, df)
 end
