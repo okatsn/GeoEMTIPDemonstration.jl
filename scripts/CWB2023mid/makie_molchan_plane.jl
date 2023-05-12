@@ -15,7 +15,6 @@ df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23A19", "GE_3yr_
 df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation_23A19", "GM_3yr_180d_500md")  |> df -> insertcols!(df, :trial => "GM" , :train_yr => 3)
 
 df = vcat(
-    # df_mx7, df_ge7, df_gm7, # SETME: add 7-year data
     df_mx3, df_ge3, df_gm3)
 # `dropnanmissing!` is required to avoid contour plot error
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
@@ -48,7 +47,7 @@ repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
 
-dfcb = combine(groupby(df, [:prp, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:prp, :frc_ind, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
 
 function label_DcHist!(f2;
@@ -75,7 +74,7 @@ plt = data(dfcb) * # data
         mapping(color = :frc_ind) *
         mapping(:frc_ind => "Forecasting Phase",
                 :FittingDegreeMOM => identity => ylabel2) *
-    mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
+    mapping(col = :trial) # WARN: it is not allowed to have integer grouping keys.
     )
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
 label_DcHist!(pl_plots; left_label = "fitting degree", right_label = "", bottom_label = "")
@@ -89,14 +88,14 @@ f1
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 f2 = Figure(; resolution = (800, 550))
-dfcb2 = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
+dfcb2 = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
 dropnanmissing!(dfcb2)
 content2 = data(dfcb2) *
     (
         visual(BarPlot) *
         mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
     ) *
-    mapping(col = :trial, row = :train_yr => stryear)
+    mapping(col = :trial)
 draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
 label_DcHist!(f2; left_label = "fitting degree", right_label = "", bottom_label = "")
 f2
@@ -105,12 +104,11 @@ Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
 
 f2a = Figure(; resolution = (550, 450))
-dfcb2a = combine(groupby(df, [:prp, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOT)
+dfcb2a = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
 dropnanmissing!(dfcb2a)
 content2 = data(dfcb2a) *
         visual(BarPlot) *
         mapping(:trial => "joint-station set", :FittingDegreeMOT => ylabel2)
-    # mapping(col = :trial, row = :train_yr => stryear)
 draw!(f2a, content2; axis = (xticklabelrotation = 0.2π, ))
 f2a
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean_only_ULF-B.png", f2a)
@@ -140,7 +138,7 @@ f3histkwargs_a = ( bins= -0.05:0.05:1.05, )
 f3 = Figure(; resolution = (800, 400))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
-dcmm = combine(groupby(dfn, [:trial, :train_yr]),
+dcmm = combine(groupby(dfn, [:trial]),
         :FittingDegree => mean   => "DC_mean",
         :FittingDegree => median => "DC_median")
 
