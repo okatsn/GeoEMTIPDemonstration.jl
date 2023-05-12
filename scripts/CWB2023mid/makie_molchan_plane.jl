@@ -51,12 +51,17 @@ ylabel2 = L"D_c  \text{(averaged over trials)}"
 dfcb = combine(groupby(df, [:prp, :frc_ind, :trial, :train_yr]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
 
-
-function label_DcPrp!(f2)
-    common_setting = (fontsize = 20, font = "Arial bold")
-    Label(f2[:, end+1], "training window length"; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[:, 0],     "fitting degree"        ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[0, :],     "with stations"         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+function label_DcHist!(f2;
+    left_label = "number of models",
+    right_label = "variable",
+    top_label = "joint-station set",
+    bottom_label = "variable value"
+    )
+common_setting = (fontsize = 20, font = "Arial bold")
+Label(f2[:, end+1], right_label; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
+Label(f2[:, 0],     left_label      ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
+Label(f2[0, :],     top_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
+Label(f2[end+1, :],     bottom_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
 end
 
 f1 = Figure(; resolution = (1000, 600))
@@ -73,7 +78,7 @@ plt = data(dfcb) * # data
     mapping(col = :trial, row = :train_yr => stryear) # WARN: it is not allowed to have integer grouping keys.
     )
 draw!(pl_plots, plt; axis = (xticklabelrotation = 0.2π, ))
-label_DcPrp!(pl_plots)
+label_DcHist!(pl_plots; left_label = "fitting degree", right_label = "", bottom_label = "")
 Legend(pl_legend[:, :],
     [PolyElement(polycolor = color) for color in  CF23.frc.colormap],
     P.uniqfrc,
@@ -93,7 +98,7 @@ content2 = data(dfcb2) *
     ) *
     mapping(col = :trial, row = :train_yr => stryear)
 draw!(f2, content2; axis = (xticklabelrotation = 0.2π, ))
-label_DcPrp!(f2)
+label_DcHist!(f2; left_label = "fitting degree", right_label = "", bottom_label = "")
 f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
@@ -119,34 +124,25 @@ Makie.save("FittingDegree_barplot_mono_color_with=nanmean_only_ULF-B.png", f2a)
 # - Have a train-test phase plot
 # https://juliadatascience.io/recipe_df
 # ## Distribution of fitting degree
-function label_DcHist!(f2;
-        left_label = "number of models",
-        right_label = "variable",
-        top_label = "joint-station set",
-        bottom_label = "variable value"
-        )
-    common_setting = (fontsize = 20, font = "Arial bold")
-    Label(f2[:, end+1], right_label; rotation = -π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[:, 0],     left_label      ; rotation = +π/2, tellwidth = true, tellheight = false, common_setting...)
-    Label(f2[0, :],     top_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
-    Label(f2[end+1, :],     bottom_label         ; rotation =    0, tellwidth = false, tellheight = true, common_setting...)
-end
+
 
 legend_f3!(f3) = Legend(f3[0, end],
     [[LineElement(;dcmeanstyle...)], [LineElement(;dcmedstyle...)]],
-    ["mean", "median"]
+    ["mean", "median"];
+    valign = :top
 )
 
+# SETME:
+f3histkwargs = ( bins= -1.05:0.05:1.05, )
+f3histkwargs_a = ( bins= -0.05:0.05:1.05, )
 
+# Figure 3:
+f3 = Figure(; resolution = (800, 400))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
 dcmm = combine(groupby(dfn, [:trial, :train_yr]),
         :FittingDegree => mean   => "DC_mean",
         :FittingDegree => median => "DC_median")
-f3 = Figure(; resolution = (800, 550))
-f3histkwargs = ( bins= -0.05:0.05:1.05, )
-
-#  |> draw
 
 dchist = data(dfn) * visual(Hist; f3histkwargs...) * mapping(:FittingDegree)
 dcmeanstyle = (color = :red, linestyle = :solid)
@@ -155,23 +151,23 @@ dcmedstyle = (color = :firebrick1, linestyle = :dash)
 dcmean = data(dcmm) *   visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:DC_mean => "mean")
 dcmedian = data(dcmm) * visual(VLines; ymin = 0,  dcmedstyle...) * mapping(:DC_median => "median")
 
-histogram_all = (dchist + dcmean + dcmedian) * mapping(row = :train_yr => stryear, col = :trial)
+histogram_all = (dchist + dcmean + dcmedian) * mapping(col = :trial)
 
 f3p = draw!(f3, histogram_all)
-label_DcHist!(f3; right_label = "training window length", bottom_label = L"\text{Fitting Degree } D_C")
+label_DcHist!(f3; right_label = "", bottom_label = L"\text{Fitting Degree } D_C")
 # legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
 legend_f3!(f3)
 f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
-
-f3a = Figure(; resolution = (800, 700))
+# Figure 3a:
+f3a = Figure(; resolution = (800, 600))
 df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial])
 df3acb = combine(groupby(df3a, [:trial, :variable]),
         :value => mean,
         :value => median)
 
-hist3a = data(df3a) * visual(Hist; f3histkwargs...) * mapping(:value)
+hist3a = data(df3a) * visual(Hist; f3histkwargs_a...) * mapping(:value)
 mean3a = data(df3acb) * visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:value_mean => "mean value")
 median3a = data(df3acb) * visual(VLines; ymin = 0, dcmedstyle...) * mapping(:value_median => "median value")
 
@@ -183,16 +179,6 @@ f3a
 Makie.save("MissingRateAlarmedRate_hist_overall_mono_color.png", f3a)
 
 
-f4 = Figure(;resolution= (800, 550))
-histogram_4 = data(dfn) *
-    histogram(bins = 15) *
-    mapping(:FittingDegree, color=:prp => "Filter" , stack=:prp) *
-    mapping(row = :train_yr => stryear, col = :trial)
-hehe = draw!(f4, histogram_4)
-label_DcHist!(f4)
-legend!(f4[0, end], hehe; valign = :top) # ;orientation = :horizontal, tellwidth = false
-f4
-Makie.save("FittingDegree_hist_colored_by_frc.png", f4)
 # KEYNOTE:
 # - AlgebraOfGraphics.histogram() * mapping results in `Combined{barplot}`
 # - `mapping(:FittingDegree, color=:frc_color , stack=:frc_ind) *` causes error
