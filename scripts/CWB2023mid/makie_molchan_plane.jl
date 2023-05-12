@@ -191,7 +191,7 @@ xymap = mapping(
 )
 
 visual_scatter_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels = 5, linewidth = 1, alpha = 0.1) +
+    AlgebraOfGraphics.density() * visual(Contour, levels = 5, linewidth = 0, alpha = 0.1) +
     visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.3)
 
 manymolchan = data(P.table) *
@@ -206,32 +206,20 @@ AlgebraOfGraphics.legend!(f5[1,2], plt5)
 f5
 Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
 
-ardensity = data(P.table) * visual(Hist; alpha = 0.8) * mapping(color = :trial) * mapping(:AlarmedRateForecasting) * mapping(layout = :frc_ind_frc)
-f5a = draw(ardensity; axis = (f5axkwargs..., limits = (xylimits, (nothing,nothing))), figure = f5res)
+densitykwargs = (alpha = 0.75,)
+ardensity = data(P.table) * visual(Hist;densitykwargs...) * mapping(color = :trial) * mapping(:AlarmedRateForecasting) * mapping(layout = :frc_ind_frc)
+f5a = draw(ardensity; axis = (f5axkwargs..., limits = (xylimits, (nothing,nothing)), xlabel = "alarmed rate", ylabel = "counts"), figure = f5res)
+Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
 # plt5a = draw!(f5a, ardensity; axis = f5axkwargs)
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
 
-mrdensity = data(P.table) * visual(Hist; direction = :x, alpha = 0.8, bins=-0.05:0.05:1.05) * mapping(color = :trial) * mapping(:MissingRateForecasting) * mapping(layout = :frc_ind_frc)
-f5b = draw(mrdensity; axis = (f5axkwargs..., limits = ((nothing,nothing), xylimits)), figure = f5res)
-
-# RainClouds are ugly
-mrdensity = data(P.table) * visual(RainClouds; orientation = :vertical, clouds = hist, hist_bins=30) * mapping(color = :trial) * mapping(:trial, :MissingRateForecasting) * mapping(layout = :frc_ind_frc)
-f5b = draw(mrdensity; axis = (f5axkwargs..., limits = ((nothing,nothing), (0,1))), figure = f5res)
-
-f5a = draw(ardensity; axis = (f5axkwargs..., limits = ((0,1), (nothing,nothing))), figure = f5res)
-
-
-# Density goes wrong on boundary
-ardensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color = :trial) * mapping(:AlarmedRateForecasting) * mapping(layout = :frc_ind_frc)
-
-mrdensity = data(P.table) * visual(Density; direction = :y, boundary =(-0.1,1.1)) * mapping(color = :trial) * mapping(:MissingRateForecasting) * mapping(layout = :frc_ind_frc)
-f5b = draw(mrdensity; axis = (f5axkwargs..., limits = ((nothing,nothing), (0,1))), figure = f5res)
-
-
-mrdensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color = :trial) * mapping(:MissingRateForecasting) * mapping(layout = :frc_ind_frc)
-f5b = draw(mrdensity; axis = f5axkwargs, figure = f5res)
+mrdensity = data(P.table) * visual(Hist; direction = :x,densitykwargs..., bins=-0.05:0.05:1.05) * mapping(color = :trial) * mapping(:MissingRateForecasting) * mapping(layout = :frc_ind_frc)
+f5b = draw(mrdensity; axis = (f5axkwargs..., limits = ((nothing,nothing), xylimits), xlabel = "counts", ylabel = "missing rate"), figure = f5res)
+Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
 
 # KEYNOTE:
+# - When scatter points concentrates at one or a few values, RainClouds are ugly, and Density & Density-related (e.g., Violin) goes wrong and misleading.
+# - I found no way to set AlgebraOfGraphics.histogram or .density to plot horizontally (the :direction argument for Hist and Density).
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
 # `AlgebraOfGraphic.density` use `KernelDensity.kde((df.AlarmedRateForecasting, df.MissingRateForecasting))`
 
