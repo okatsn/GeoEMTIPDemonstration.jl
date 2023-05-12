@@ -133,11 +133,11 @@ dcmm = combine(groupby(dfn, [:trial, :train_yr]),
         :FittingDegree => mean   => "DC_mean",
         :FittingDegree => median => "DC_median")
 f3 = Figure(; resolution = (800, 550))
-
+f3histkwargs = ( bins= -0.05:0.05:1.05, )
 
 #  |> draw
 
-dchist = data(dfn) * visual(Hist, bins = 15) * mapping(:FittingDegree)
+dchist = data(dfn) * visual(Hist; f3histkwargs...) * mapping(:FittingDegree)
 dcmeanstyle = (color = :red, linestyle = :solid)
 dcmedstyle = (color = :firebrick1, linestyle = :dash)
 dcmean = data(dcmm) *   visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:DC_mean => "mean")
@@ -156,6 +156,22 @@ Label(f3[end+1, :], L"\text{Fitting Degree } D_C"; tellwidth = false)
 f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
+f3a = Figure(; resolution = (800, 700))
+
+df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial])
+df3acb = combine(groupby(df3a, [:trial, :variable]),
+        :value => mean,
+        :value => median)
+
+hist3a = data(df3a) * visual(Hist; f3histkwargs...) * mapping(:value)
+mean3a = data(df3acb) * visual(VLines; ymin = 0, dcmeanstyle...) * mapping(:value_mean => "mean value")
+median3a = data(df3acb) * visual(VLines; ymin = 0, dcmedstyle...) * mapping(:value_median => "median value")
+
+histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row = :variable, col = :trial)
+f3ap = draw!(f3a, histcomb_f3a)
+# CHECKPOINT:
+# - check the code again to see if the plot is correct
+# - have a legend
 
 
 f4 = Figure(;resolution= (800, 550))
