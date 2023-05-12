@@ -191,7 +191,7 @@ xymap = mapping(
 )
 
 visual_scatter_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels = 5, linewidth = 0, alpha = 0.1) +
+    AlgebraOfGraphics.density() * visual(Contour, levels = 5, linewidth = 0, alpha = 0.1) + # Noted that linewidth is zero that the contour is not displayed.
     visual(Scatter, levels = 40, linewidth = 0.5, markersize = 5, alpha = 0.3)
 
 manymolchan = data(P.table) *
