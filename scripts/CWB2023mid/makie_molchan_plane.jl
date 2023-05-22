@@ -223,15 +223,18 @@ AlgebraOfGraphics.legend!(f5[1,2], plt5)
 f5
 Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
 
-densitykwargs = (alpha = 0.75,)
-ardensity = data(P.table) * visual(Hist;densitykwargs...) * mapping(color = :trial) * mapping(:AlarmedRateForecasting) * mapping(layout = :frc_ind_frc)
-f5a = draw(ardensity; axis = (f5axkwargs..., limits = (xylimits, (nothing,nothing)), xlabel = "alarmed rate", ylabel = "counts"), figure = f5res)
+densitykwargs = (alpha = 0.6, bins=-0.05:0.04:1.05, bandwidth = 0.01, boundary = (-0.1, 1.1))
+withrecipe = Density # Hist
+ardensity = data(P.table) * visual(withrecipe;densitykwargs...) * mapping(color = :trial) * mapping(:AlarmedRateForecasting) * mapping(layout = :frc_ind_frc)
+f5a = draw(ardensity; axis = (f5axkwargs..., limits = (xylimits, (nothing,nothing)), xlabel = "alarmed rate", ylabel = "pdf"), figure = f5res)
 Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
 # plt5a = draw!(f5a, ardensity; axis = f5axkwargs)
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
 
-mrdensity = data(P.table) * visual(Hist; direction = :x,densitykwargs..., bins=-0.05:0.05:1.05) * mapping(color = :trial) * mapping(:MissingRateForecasting) * mapping(layout = :frc_ind_frc)
-f5b = draw(mrdensity; axis = (f5axkwargs..., limits = ((nothing,nothing), xylimits), xlabel = "counts", ylabel = "missing rate"), figure = f5res)
+mrdensity = data(P.table) *
+    visual(withrecipe; densitykwargs...) * mapping(color = :trial) * # vertical hist
+    mapping(:MissingRateForecasting) * mapping(layout = :frc_ind_frc)
+f5b = draw(mrdensity; axis = (f5axkwargs..., limits = (xylimits, (nothing,nothing)), xlabel = "missing rate", ylabel = "pdf"), figure = f5res)
 Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
 
 # KEYNOTE:
