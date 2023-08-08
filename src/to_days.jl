@@ -7,14 +7,17 @@ function to_days(v::Vector)
     ds
 end
 
+onedayinsec = 86400
+
 """
 Given `p::Period`, `to_days(p)` returns `Real` number of the value in the unit of day.
 """
 to_days(p::Week) = p.value * 7
 to_days(p::Year) = p.value * 365
-to_days(p::Hour) = p.value/24
-to_days(p::Minute) = p.value/1440
-to_days(p::Second) = p.value/86400
+to_days(p::Hour) = p.value / 24
+to_days(p::Minute) = p.value / 1440
+to_days(p::Second) = p.value / onedayinsec
+to_days(p::Millisecond) = p.value * 0.001 / onedayinsec
 to_days(p::Day) = p.value
 
 """
