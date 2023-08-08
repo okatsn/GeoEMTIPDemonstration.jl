@@ -1,17 +1,25 @@
-
-
 struct Prep202304 <: Preprocessed
     uniqprp
     uniqfrc
-    toindex_prp
-    toindex_frc
+    uniqtrial
     table
+end
+
+
+"""
+`uniqcol = uniqsomething!(df, col)` add new column "\$(col)_ind" as the integer indices for a vector of string `uniqcol`.
+"""
+function uniqsomething!(df, col)
+    uniqprp = string.(unique(df[:, col]))
+    toindex_prp = str -> toindex(str, uniqprp)
+    transform!(df, col => ByRow(toindex_prp) => Symbol("$(col)_ind"))
+    return uniqprp
 end
 
 """
 Given `df = CSV.read("summary_test.csv", DataFrame)`, `prep202304!(df)` calculates the following new columns:
 - `:FittingDegree`
-- `:prp_ind` (for `Makie` plot use) 
+- `:prp_ind` (for `Makie` plot use)
 - `:frc_ind` (for `Makie` plot use)
 """
 function prep202304!(df)
@@ -22,14 +30,11 @@ function prep202304!(df)
 
     transform!(df, :HitRatesForecasting => ByRow(x->1-x) => :MissingRateForecasting)
     transform!(df, [:MissingRateForecasting, :AlarmedRateForecasting] => ByRow((x, y) -> 1-x-y) => :FittingDegree)
-    uniqprp = string.(unique(df.prp))
-    uniqfrc = string.(unique(df.frc))
-    toindex_prp = x -> toindex(x, uniqprp)
-    toindex_frc = x -> toindex(x, uniqfrc)
-    transform!(df, :prp => ByRow(toindex_prp) => :prp_ind)
-    transform!(df, :frc => ByRow(toindex_frc) => :frc_ind)
+    uniqprp =  uniqsomething!(df, :prp)
+    uniqfrc =  uniqsomething!(df, :frc)
+    uniqtrial =  uniqsomething!(df, :trial)
 
-    return Prep202304(uniqprp, uniqfrc, toindex_prp, toindex_frc, df)
+    return Prep202304(uniqprp, uniqfrc, uniqtrial, df)
 end
 
 function Base.show(io::IO, P::Prep202304)
