@@ -21,9 +21,6 @@ df = vcat(
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
 dropnanmissing!(df)
 
-# SETME: filter some data
-filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
-
 
 P = prep202304!(df)
 transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y, x)) => :frc_ind_frc)
@@ -49,7 +46,7 @@ repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
 
-dfcb = combine(groupby(df, [:frc_ind, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
 
 function label_DcHist!(f2;
@@ -67,7 +64,7 @@ end
 dcmeanstyle = (color=:red, linestyle=:solid)
 dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
-f1 = Figure(; resolution=(1000, 600))
+f1 = Figure(; resolution=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 
@@ -77,22 +74,23 @@ rainbowbars = data(dfcb) * # data
               mapping(color=:frc_ind) *
               mapping(:frc_ind,
                   :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
-dfcb_mean = combine(groupby(dfcb, :trial), :FittingDegreeMOM => mean)
+dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
 hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
-plt = (rainbowbars + hlineofmean) * mapping(col=:trial)
+plt = (rainbowbars + hlineofmean) * mapping(col=:trial, row=:prp)
 draw!(pl_plots, plt; axis=(xticklabelrotation=0.2π,))
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
+
 Legend(pl_legend[:, :],
     [PolyElement(polycolor=color) for color in CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
     labelsize=14,
-    tellheight=false, tellwidth=true, halign=:left, valign=:center)
+    tellheight=false, tellwidth=true, halign=:left, valign=:top)
 Legend(pl_legend[0, end],
     [[LineElement(; dcmeanstyle...)]],
     ["overall average"];
-    valign=:top, tellheight=true
+    valign=:bottom, tellheight=true
 )
 f1
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
