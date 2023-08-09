@@ -143,10 +143,10 @@ f3histkwargs = (bins=-1.05:0.05:1.05,)
 f3histkwargs_a = (bins=-0.05:0.05:1.05,)
 
 # Figure 3:
-f3 = Figure(; resolution=(800, 400))
+f3 = Figure(; resolution=(800, 900))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
-dcmm = combine(groupby(dfn, [:trial]),
+dcmm = combine(groupby(dfn, [:trial, :prp]),
     :FittingDegree => mean => "DC_mean",
     :FittingDegree => median => "DC_median")
 
@@ -156,7 +156,7 @@ dchist = data(dfn) * visual(Hist; f3histkwargs...) * mapping(:FittingDegree)
 dcmean = data(dcmm) * visual(VLines; ymin=0, dcmeanstyle...) * mapping(:DC_mean => "mean")
 dcmedian = data(dcmm) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:DC_median => "median")
 
-histogram_all = (dchist + dcmean + dcmedian) * mapping(col=:trial)
+histogram_all = (dchist + dcmean + dcmedian) * mapping(col=:trial, row=:prp)
 
 f3p = draw!(f3, histogram_all)
 label_DcHist!(f3; right_label="", bottom_label=L"\text{Fitting Degree } D_C")
