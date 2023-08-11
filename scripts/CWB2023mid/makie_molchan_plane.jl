@@ -167,8 +167,8 @@ Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 # Figure 3a:
 f3a = Figure(; resolution=(800, 600))
-df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial])
-df3acb = combine(groupby(df3a, [:trial, :variable]),
+df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial, :prp])
+df3acb = combine(groupby(df3a, [:trial, :prp, :variable]),
     :value => mean,
     :value => median)
 
@@ -176,7 +176,7 @@ hist3a = data(df3a) * visual(Hist; f3histkwargs_a...) * mapping(:value)
 mean3a = data(df3acb) * visual(VLines; ymin=0, dcmeanstyle...) * mapping(:value_mean => "mean value")
 median3a = data(df3acb) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:value_median => "median value")
 
-histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
+histcomb_f3a = ((hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)) * mapping(layout=:prp)
 f3ap = draw!(f3a, histcomb_f3a)
 label_DcHist!(f3a)
 legend_f3!(f3a)
