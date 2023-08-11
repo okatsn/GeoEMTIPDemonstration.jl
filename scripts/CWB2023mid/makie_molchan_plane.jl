@@ -200,7 +200,7 @@ Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 # - I cannot assign colormap, that I have to make CF23.prp.color the default Makie color
 # - The default Makie color is Makie.wong_colors(), which has a length of 7; if the number of categories is larger than 7, you will see duplicated color patches.
 
-f5res = (resolution=(800, 800),)
+f5res = (resolution=(800, 700),)
 xylimits = (-0.05, 1.05)
 f5axkwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
 f5 = Figure(; f5res...)
@@ -214,21 +214,23 @@ xymap = mapping(
     :MissingRateForecasting => identity => "missing rate",
 )
 
-visual_scatter_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels=5, linewidth=0, alpha=0.1) + # Noted that linewidth is zero that the contour is not displayed.
-    visual(Scatter, levels=40, linewidth=0.5, markersize=5, alpha=0.3)
+visual_contour =
+    AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8)
 
-manymolchan = data(P.table) *
-              mapping(color=:trial, marker=:trial) *
-              visual_scatter_contour *
-              mapping(layout=:frc_ind_frc => "Forecasting Phase") *
-              xymap + randguess
+visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
+
+
+molchan_all_frc = data(P.table) *
+                  mapping(marker=:trial, color=:trial) *
+                  (visual_contour + visual_scatter) *
+                  mapping(layout=:prp => "filter") *
+                  xymap + randguess
 
 set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-plt5 = draw!(f5[1, 1], manymolchan; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
+plt5 = draw!(f5[1, 1], molchan_all_frc; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
 AlgebraOfGraphics.legend!(f5[1, 2], plt5)
 f5
-Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
+Makie.save("MolchanDiagram_color=trial_layout=prp.png", f5)
 
 densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
 withrecipe = Density # Hist
