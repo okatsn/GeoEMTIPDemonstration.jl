@@ -222,12 +222,11 @@ visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
 
 molchan_all_frc = data(P.table) *
                   mapping(marker=:trial, color=:trial) *
-                  (visual_contour + visual_scatter) *
                   mapping(layout=:prp => "filter") *
-                  xymap + randguess
+                  xymap
 
 set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-plt5 = draw!(f5[1, 1], molchan_all_frc; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
+plt5 = draw!(f5[1, 1], molchan_all_frc * visual_contour + randguess; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
 AlgebraOfGraphics.legend!(f5[1, 2], plt5)
 f5
 Makie.save("MolchanDiagram_color=trial_layout=prp.png", f5)
