@@ -21,9 +21,6 @@ df = vcat(
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
 dropnanmissing!(df)
 
-# SETME: filter some data
-filter!(:prp => (x -> x == "ULF_B"), df) # x -> x != "BP_35"
-
 
 P = prep202304!(df)
 transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y, x)) => :frc_ind_frc)
@@ -49,7 +46,7 @@ repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
 
-dfcb = combine(groupby(df, [:frc_ind, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
 dropnanmissing!(dfcb)
 
 function label_DcHist!(f2;
@@ -67,7 +64,7 @@ end
 dcmeanstyle = (color=:red, linestyle=:solid)
 dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
-f1 = Figure(; resolution=(1000, 600))
+f1 = Figure(; resolution=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 
@@ -77,22 +74,23 @@ rainbowbars = data(dfcb) * # data
               mapping(color=:frc_ind) *
               mapping(:frc_ind,
                   :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
-dfcb_mean = combine(groupby(dfcb, :trial), :FittingDegreeMOM => mean)
+dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
 hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
-plt = (rainbowbars + hlineofmean) * mapping(col=:trial)
+plt = (rainbowbars + hlineofmean) * mapping(col=:trial, row=:prp)
 draw!(pl_plots, plt; axis=(xticklabelrotation=0.2π,))
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
+
 Legend(pl_legend[:, :],
     [PolyElement(polycolor=color) for color in CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
     labelsize=14,
-    tellheight=false, tellwidth=true, halign=:left, valign=:center)
+    tellheight=false, tellwidth=true, halign=:left, valign=:top)
 Legend(pl_legend[0, end],
     [[LineElement(; dcmeanstyle...)]],
     ["overall average"];
-    valign=:top, tellheight=true
+    valign=:bottom, tellheight=true
 )
 f1
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
@@ -145,10 +143,10 @@ f3histkwargs = (bins=-1.05:0.05:1.05,)
 f3histkwargs_a = (bins=-0.05:0.05:1.05,)
 
 # Figure 3:
-f3 = Figure(; resolution=(800, 400))
+f3 = Figure(; resolution=(800, 900))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
-dcmm = combine(groupby(dfn, [:trial]),
+dcmm = combine(groupby(dfn, [:trial, :prp]),
     :FittingDegree => mean => "DC_mean",
     :FittingDegree => median => "DC_median")
 
@@ -158,7 +156,7 @@ dchist = data(dfn) * visual(Hist; f3histkwargs...) * mapping(:FittingDegree)
 dcmean = data(dcmm) * visual(VLines; ymin=0, dcmeanstyle...) * mapping(:DC_mean => "mean")
 dcmedian = data(dcmm) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:DC_median => "median")
 
-histogram_all = (dchist + dcmean + dcmedian) * mapping(col=:trial)
+histogram_all = (dchist + dcmean + dcmedian) * mapping(col=:trial, row=:prp)
 
 f3p = draw!(f3, histogram_all)
 label_DcHist!(f3; right_label="", bottom_label=L"\text{Fitting Degree } D_C")
@@ -168,22 +166,30 @@ f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 # Figure 3a:
-f3a = Figure(; resolution=(800, 600))
-df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial])
-df3acb = combine(groupby(df3a, [:trial, :variable]),
+f3a = Figure(; resolution=(1000, 700))
+raincloudkwargs = (plot_boxplots=true, orientation=:vertical,
+    cloud_width=0.85,
+    markersize=1, jitter_width=0.02, # scatter plot settings
+    boxplot_width=0.12, # boxplot settings
+    gap=0, # gap between prp
+)
+
+df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial, :prp])
+df3acb = combine(groupby(df3a, [:trial, :prp, :variable]),
     :value => mean,
     :value => median)
 
-hist3a = data(df3a) * visual(Hist; f3histkwargs_a...) * mapping(:value)
-mean3a = data(df3acb) * visual(VLines; ymin=0, dcmeanstyle...) * mapping(:value_mean => "mean value")
-median3a = data(df3acb) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:value_median => "median value")
+hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp => :Filter, :value) * mapping(color=:prp)
+# mean3a = data(df3acb) * visual(VLines; ymin=0, dcmeanstyle...) * mapping(:value_mean => "mean value")
+# median3a = data(df3acb) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:value_median => "median value")
 
-histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
+histcomb_f3a = (hist3a) * mapping(row=:variable, col=:trial)
+# histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
 f3ap = draw!(f3a, histcomb_f3a)
-label_DcHist!(f3a)
-legend_f3!(f3a)
+label_DcHist!(f3a; right_label="variable", left_label="", bottom_label="probability density")
+# legend_f3!(f3a)
 f3a
-Makie.save("MissingRateAlarmedRate_hist_overall_mono_color.png", f3a)
+Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 
 
 # KEYNOTE:
@@ -194,10 +200,19 @@ Makie.save("MissingRateAlarmedRate_hist_overall_mono_color.png", f3a)
 # - I cannot assign colormap, that I have to make CF23.prp.color the default Makie color
 # - The default Makie color is Makie.wong_colors(), which has a length of 7; if the number of categories is larger than 7, you will see duplicated color patches.
 
-f5res = (resolution=(800, 800),)
 xylimits = (-0.05, 1.05)
-f5axkwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
-f5 = Figure(; f5res...)
+
+function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, target_file)
+    f50res = (resolution=(800, 700),)
+    f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
+    f5 = Figure(; f50res...)
+
+    set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
+    plt5 = draw!(f5[1, 1], aog_layer; axis=(f5sckwargs..., limits=(xylimits, xylimits)))
+    AlgebraOfGraphics.legend!(f5[1, 2], plt5)
+    Makie.save(target_file, f5)
+    return f5
+end
 
 # additional abline
 randlinekwargs = (color="red", linestyle=:dashdot)
@@ -208,34 +223,30 @@ xymap = mapping(
     :MissingRateForecasting => identity => "missing rate",
 )
 
-visual_scatter_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels=5, linewidth=0, alpha=0.1) + # Noted that linewidth is zero that the contour is not displayed.
-    visual(Scatter, levels=40, linewidth=0.5, markersize=5, alpha=0.3)
+visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8)
+visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
 
-manymolchan = data(P.table) *
-              mapping(color=:trial, marker=:trial) *
-              visual_scatter_contour *
-              mapping(layout=:frc_ind_frc => "Forecasting Phase") *
-              xymap + randguess
 
-set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-plt5 = draw!(f5[1, 1], manymolchan; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
-AlgebraOfGraphics.legend!(f5[1, 2], plt5)
-f5
-Makie.save("MolchanDiagram_color=trial_layout=frc.png", f5)
+molchan_all_frc = data(P.table) *
+                  mapping(marker=:trial, color=:trial) *
+                  mapping(layout=:prp => "filter") *
+                  xymap
 
+f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
+f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
+
+
+f5res = (resolution=(800, 700),)
+f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
 densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
-withrecipe = Density # Hist
-ardensity = data(P.table) * visual(withrecipe; densitykwargs...) * mapping(color=:trial) * mapping(:AlarmedRateForecasting) * mapping(layout=:frc_ind_frc)
-f5a = draw(ardensity; axis=(f5axkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
+
+ratedensity = data(P.table) * visual(Density; densitykwargs...) * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
+f5a = draw(ratedensity * mapping(:AlarmedRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
-# plt5a = draw!(f5a, ardensity; axis = f5axkwargs)
+
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
 
-mrdensity = data(P.table) *
-            visual(withrecipe; densitykwargs...) * mapping(color=:trial) * # vertical hist
-            mapping(:MissingRateForecasting) * mapping(layout=:frc_ind_frc)
-f5b = draw(mrdensity; axis=(f5axkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
+f5b = draw(ratedensity * mapping(:MissingRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
 
 # KEYNOTE:
