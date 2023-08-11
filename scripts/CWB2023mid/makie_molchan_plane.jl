@@ -203,11 +203,11 @@ Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, target_file)
     f5res = (resolution=(800, 700),)
     xylimits = (-0.05, 1.05)
-    f5axkwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
+    f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f5res...)
 
     set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-    plt5 = draw!(f5[1, 1], aog_layer; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
+    plt5 = draw!(f5[1, 1], aog_layer; axis=(f5sckwargs..., limits=(xylimits, xylimits)))
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
     Makie.save(target_file, f5)
     return f5
@@ -234,19 +234,16 @@ molchan_all_frc = data(P.table) *
 f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
-
+f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
 densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
-withrecipe = Density # Hist
-ardensity = data(P.table) * visual(withrecipe; densitykwargs...) * mapping(color=:trial) * mapping(:AlarmedRateForecasting) * mapping(layout=:frc_ind_frc)
-f5a = draw(ardensity; axis=(f5axkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
+
+ratedensity = data(P.table) * visual(Density; densitykwargs...) * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
+f5a = draw(ratedensity * mapping(:AlarmedRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
-# plt5a = draw!(f5a, ardensity; axis = f5axkwargs)
+
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
 
-mrdensity = data(P.table) *
-            visual(withrecipe; densitykwargs...) * mapping(color=:trial) * # vertical hist
-            mapping(:MissingRateForecasting) * mapping(layout=:frc_ind_frc)
-f5b = draw(mrdensity; axis=(f5axkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
+f5b = draw(ratedensity * mapping(:MissingRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
 
 # KEYNOTE:
