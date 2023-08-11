@@ -166,25 +166,30 @@ f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 # Figure 3a:
-f3a = Figure(; resolution=(800, 900))
-raincloudkwargs = (plot_boxplots=true, clouds=hist, orientation=:vertical)
+f3a = Figure(; resolution=(1000, 700))
+raincloudkwargs = (plot_boxplots=true, orientation=:vertical,
+    cloud_width=0.85,
+    markersize=1, jitter_width=0.02, # scatter plot settings
+    boxplot_width=0.12, # boxplot settings
+    gap=0, # gap between prp
+)
 
 df3a = stack(dfn, [:MissingRateForecasting, :AlarmedRateForecasting], [:trial, :prp])
 df3acb = combine(groupby(df3a, [:trial, :prp, :variable]),
     :value => mean,
     :value => median)
 
-hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp, :value) * mapping(color=:prp)
+hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp => :Filter, :value) * mapping(color=:prp)
 # mean3a = data(df3acb) * visual(VLines; ymin=0, dcmeanstyle...) * mapping(:value_mean => "mean value")
 # median3a = data(df3acb) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:value_median => "median value")
 
-histcomb_f3a = (hist3a) * mapping(col=:variable, row=:trial)
+histcomb_f3a = (hist3a) * mapping(row=:variable, col=:trial)
 # histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
 f3ap = draw!(f3a, histcomb_f3a)
-label_DcHist!(f3a)
-legend_f3!(f3a)
+label_DcHist!(f3a; right_label="variable", left_label="", bottom_label="probability density")
+# legend_f3!(f3a)
 f3a
-Makie.save("MissingRateAlarmedRate_hist_overall_mono_color.png", f3a)
+Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 
 
 # KEYNOTE:
