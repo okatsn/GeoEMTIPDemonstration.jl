@@ -200,10 +200,18 @@ Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 # - I cannot assign colormap, that I have to make CF23.prp.color the default Makie color
 # - The default Makie color is Makie.wong_colors(), which has a length of 7; if the number of categories is larger than 7, you will see duplicated color patches.
 
-f5res = (resolution=(800, 700),)
-xylimits = (-0.05, 1.05)
-f5axkwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
-f5 = Figure(; f5res...)
+function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, target_file)
+    f5res = (resolution=(800, 700),)
+    xylimits = (-0.05, 1.05)
+    f5axkwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
+    f5 = Figure(; f5res...)
+
+    set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
+    plt5 = draw!(f5[1, 1], aog_layer; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
+    AlgebraOfGraphics.legend!(f5[1, 2], plt5)
+    Makie.save(target_file, f5)
+    return f5
+end
 
 # additional abline
 randlinekwargs = (color="red", linestyle=:dashdot)
@@ -214,9 +222,7 @@ xymap = mapping(
     :MissingRateForecasting => identity => "missing rate",
 )
 
-visual_contour =
-    AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8)
-
+visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8)
 visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
 
 
@@ -225,11 +231,9 @@ molchan_all_frc = data(P.table) *
                   mapping(layout=:prp => "filter") *
                   xymap
 
-set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-plt5 = draw!(f5[1, 1], molchan_all_frc * visual_contour + randguess; axis=(f5axkwargs..., limits=(xylimits, xylimits)))
-AlgebraOfGraphics.legend!(f5[1, 2], plt5)
-f5
-Makie.save("MolchanDiagram_color=trial_layout=prp.png", f5)
+f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
+f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
+
 
 densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
 withrecipe = Density # Hist
