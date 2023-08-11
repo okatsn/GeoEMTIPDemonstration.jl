@@ -200,11 +200,12 @@ Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 # - I cannot assign colormap, that I have to make CF23.prp.color the default Makie color
 # - The default Makie color is Makie.wong_colors(), which has a length of 7; if the number of categories is larger than 7, you will see duplicated color patches.
 
+xylimits = (-0.05, 1.05)
+
 function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, target_file)
-    f5res = (resolution=(800, 700),)
-    xylimits = (-0.05, 1.05)
+    f50res = (resolution=(800, 700),)
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
-    f5 = Figure(; f5res...)
+    f5 = Figure(; f50res...)
 
     set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
     plt5 = draw!(f5[1, 1], aog_layer; axis=(f5sckwargs..., limits=(xylimits, xylimits)))
@@ -234,6 +235,8 @@ molchan_all_frc = data(P.table) *
 f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
+
+f5res = (resolution=(800, 700),)
 f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
 densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
 
