@@ -13,7 +13,7 @@ include("projectdir.jl")
 export dir_cwb2023mid
 
 include("only1field.jl")
-export only1field
+export only1field, only1key
 
 using Dates
 include("dateinterval.jl")
