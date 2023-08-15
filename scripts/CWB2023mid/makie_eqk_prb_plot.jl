@@ -34,3 +34,12 @@ transform!(df, :timeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 fulldt = df.dt |> unique |> sort
 dictTX = Dict(fulldt .=> eachindex(fulldt))
 transform!(df, :dt => ByRow(t -> dictTX[t]) => :x)
+
+dfg = groupby(df, [:eventTag])
+
+dfg1 = groupby(df, [:trial, :prp]) |> first
+
+f = Figure()
+
+axleft, axright = twinaxis(f[1, 1])
+f
