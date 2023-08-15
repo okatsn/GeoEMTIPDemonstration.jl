@@ -35,11 +35,16 @@ fulldt = df.dt |> unique |> sort
 dictTX = Dict(fulldt .=> eachindex(fulldt))
 transform!(df, :dt => ByRow(t -> dictTX[t]) => :x)
 
-dfg = groupby(df, [:eventTag])
+groupby(df, [:eventTag]) |> length
 
-dfg1 = groupby(df, [:trial, :prp]) |> first
+dfg1 = groupby(df, [:eventTag])[1]
 
 f = Figure()
 
+probplt = data(dfg1) * visual(Lines) * mapping(:x, :ProbabilityMean) * mapping(col=:trial, row=:prp)
+
 axleft, axright = twinaxis(f[1, 1])
+
+draw!(axleft, probplt)
+
 f
