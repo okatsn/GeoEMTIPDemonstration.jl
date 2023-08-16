@@ -12,6 +12,9 @@ using Dates
 using OkFiles
 # clustering
 using MLJ # for standardization
+using Clustering
+# sperical distance
+using SphericalGeometry
 
 
 df_ge = CSV.read("data/temp/PhaseTestEQK_GE_3yr_180d_500md_2023J30.csv", DataFrame)
@@ -56,7 +59,38 @@ fit!(mach)
 combine(MLJ.transform(mach, EQK), All() .=> mean)
 combine(MLJ.transform(mach, EQK), All() .=> std)
 
+# radius by dimension
+grid_latlon =
+    EQK.eventLat
+EQK.eventLon
 
+twopoints = SphericalGeometry.Point.(
+    [24.2, 24.3],
+    [121.0, 121.0],
+)
+angular_distance(twopoints...) * 6371 / 360 * 2π
+# Verified with matlab code: deg2km(distance('gc', [24.2, 121.0], [24.3, 121.0]))
+
+
+r_latlon = 0.1
+EQK.eventLat |> diff .|> abs |> unique
+r_latlon = 0.1
+
+
+dfstd = MLJ.transform(mach, EQK)
+dfstd.eventTime_x * 5 |> hist
+df.eventTime_x |> hist
+
+dfstd.eventLat |> hist
+df.eventLat |> hist
+
+# CHECKPOINT: Noted that in EQK and df, `targetcols` are the original
+
+
+# # Clusterting by dbscan
+dbresult = dbscan(Matrix(EQK[1:10000, [:eventTime_x]])',
+    30, # 30 days
+)
 
 
 
