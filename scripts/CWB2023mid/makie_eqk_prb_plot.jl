@@ -42,25 +42,32 @@ groupby(df, [:eventTag]) |> length
 
 dfg1 = groupby(df, [:eventTag])[1]
 
-f = Figure()
+function eqkprb_plot(dfg1)
+    probplt = data(dfg1) * visual(Lines) * mapping(:x, :probabilityMean, color=:trial)
+    f = Figure()
+    axleft, axright = twinaxis(f[1, 1])
+    linkxaxes!(axleft, axright)
+    # axleft = Axis(f[1, 1])
+    draw!(axleft, probplt)
 
-probplt = data(dfg1) * visual(Lines) * mapping(:x, :probabilityMean, linestyle=:trial)
+    evtlist = let uniqcols = [:eventTime, :eventTime_x, :eventSize, :eventLat, :eventLon]
+        evtlist = combine(groupby(dfg1, uniqcols), uniqcols .=> unique)
+    end
 
-axleft, axright = twinaxis(f[1, 1])
-linkxaxes!(axleft, axright)
-# axleft = Axis(f[1, 1])
-draw!(axleft, probplt)
+    evtx = evtlist.eventTime_x
+    evtsz = evtlist.eventSize
+    scatter!(axright, evtx, evtsz, markersize=5 .+ evtsz * 10, color=:red)
 
-evtlist = let uniqcols = [:eventTime, :eventTime_x, :eventSize, :eventLat, :eventLon]
-    evtlist = combine(groupby(dfg1, uniqcols), uniqcols .=> unique)
+    for ax in [axleft, axright]
+        datetimeticks!(ax, df.dt, df.x, Month(1))
+        ax.xticklabelrotation = 0.2π
+    end
+    f
 end
 
-evtx = evtlist.eventTime_x
-scatter!(axright, evtx, fill(0, length(evtx)), markersize=10 .+ evtlist.eventSize * 3)
-
-for ax in [axleft, axright]
-    datetimeticks!(ax, df.dt, df.x, Month(1))
-    ax.xticklabelrotation = 0.2π
+for dfg1 in groupby(df, [:eventTag])
+    with_theme(Scatter=(alpha=0.3, marker=:circle)) do
+        f = eqkprb_plot(dfg1)
+        display(f)
+    end
 end
-
-f
