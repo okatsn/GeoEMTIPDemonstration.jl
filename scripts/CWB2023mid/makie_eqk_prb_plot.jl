@@ -10,6 +10,9 @@ using GeoEMTIPDemonstration
 using OkMakieToolkits
 using Dates
 using OkFiles
+# clustering
+# using MLJ # for standardization
+
 
 df_ge = CSV.read("data/temp/PhaseTestEQK_GE_3yr_180d_500md_2023J30.csv", DataFrame)
 df_gm = CSV.read("data/temp/PhaseTestEQK_GM_3yr_180d_500md_2023J30.csv", DataFrame)
@@ -33,14 +36,11 @@ transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :event
 
 # full list of datetime; TimeAsX.
 fulldt = df.dt |> unique |> sort
-dictTX = Dict(fulldt .=> eachindex(fulldt))
-transform!(df, :dt => ByRow(t -> dictTX[t]) => :x)
-transform!(df, :eventTime => ByRow(t -> dictTX[floor(t, Day(1))]) => :eventTime_x)
+transform!(df, :dt => ByRow(datetime2julian) => :x)
+transform!(df, :eventTime => ByRow(datetime2julian) => :eventTime_x)
 
-
-groupby(df, [:eventTag]) |> length
-
-dfg1 = groupby(df, [:eventTag])[1]
+groupdfs = groupby(df, [:prp])
+dfg1 = groupdfs[1]
 
 function eqkprb_plot(dfg1)
     probplt = data(dfg1) * visual(Lines) * mapping(:x, :probabilityMean, color=:trial)
@@ -65,8 +65,8 @@ function eqkprb_plot(dfg1)
     f
 end
 
-for dfg1 in groupby(df, [:eventTag])
-    with_theme(Scatter=(alpha=0.3, marker=:circle)) do
+for dfg1 in groupdfs[1:2]
+    with_theme(resolution=(1200, 300), Scatter=(alpha=0.3, marker=:circle)) do
         f = eqkprb_plot(dfg1)
         display(f)
     end
