@@ -29,11 +29,16 @@ df = vcat(df_ge, df_gm, df_mix)
 
 # convert `timeStr` to `DateTime`
 transform!(df, :timeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
+select!(df, All(), :eventTime => ByRow(t -> DateTime(t, "y/m/d H:M")); renamecols=false)
 
 # full list of datetime; TimeAsX.
 fulldt = df.dt |> unique |> sort
 dictTX = Dict(fulldt .=> eachindex(fulldt))
 transform!(df, :dt => ByRow(t -> dictTX[t]) => :x)
+transform!(df, :eventTime => ByRow(t -> dictTX[floor(t, Day(1))]) => :eventTime_x)
+
+
+
 
 groupby(df, [:eventTag]) |> length
 
@@ -41,10 +46,15 @@ dfg1 = groupby(df, [:eventTag])[1]
 
 f = Figure()
 
-probplt = data(dfg1) * visual(Lines) * mapping(:x, :ProbabilityMean) * mapping(col=:trial, row=:prp)
+probplt = data(dfg1) * visual(Lines) * mapping(:x, :ProbabilityMean, linestyle=:trial)
 
 axleft, axright = twinaxis(f[1, 1])
-
+linkxaxes!(axleft, axright)
+# axleft = Axis(f[1, 1])
 draw!(axleft, probplt)
+
+evtx = dfg1.eventTime_x |> unique
+evty = fill(1, length(evtx))
+scatter!(axright, evtx, evty, markersize=20)
 
 f
