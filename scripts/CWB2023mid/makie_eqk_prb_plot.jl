@@ -38,8 +38,6 @@ transform!(df, :dt => ByRow(t -> dictTX[t]) => :x)
 transform!(df, :eventTime => ByRow(t -> dictTX[floor(t, Day(1))]) => :eventTime_x)
 
 
-
-
 groupby(df, [:eventTag]) |> length
 
 dfg1 = groupby(df, [:eventTag])[1]
@@ -53,8 +51,16 @@ linkxaxes!(axleft, axright)
 # axleft = Axis(f[1, 1])
 draw!(axleft, probplt)
 
-evtx = dfg1.eventTime_x |> unique
-evty = fill(1, length(evtx))
-scatter!(axright, evtx, evty, markersize=20)
+evtlist = let uniqcols = [:eventTime, :eventTime_x, :eventSize, :eventLat, :eventLon]
+    evtlist = combine(groupby(dfg1, uniqcols), uniqcols .=> unique)
+end
+
+evtx = evtlist.eventTime_x
+scatter!(axright, evtx, fill(0, length(evtx)), markersize=10 .+ evtlist.eventSize * 3)
+
+for ax in [axleft, axright]
+    datetimeticks!(ax, df.dt, df.x, Month(1))
+    ax.xticklabelrotation = 0.2π
+end
 
 f
