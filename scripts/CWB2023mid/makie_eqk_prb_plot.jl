@@ -27,9 +27,9 @@ end
 
 df = vcat(df_ge, df_gm, df_mix)
 
-# convert `timeStr` to `DateTime`
-transform!(df, :timeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
-select!(df, All(), :eventTime => ByRow(t -> DateTime(t, "y/m/d H:M")); renamecols=false)
+# convert `probabilityTimeStr` to `DateTime`
+transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
+transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 
 # full list of datetime; TimeAsX.
 fulldt = df.dt |> unique |> sort
@@ -46,7 +46,7 @@ dfg1 = groupby(df, [:eventTag])[1]
 
 f = Figure()
 
-probplt = data(dfg1) * visual(Lines) * mapping(:x, :ProbabilityMean, linestyle=:trial)
+probplt = data(dfg1) * visual(Lines) * mapping(:x, :probabilityMean, linestyle=:trial)
 
 axleft, axright = twinaxis(f[1, 1])
 linkxaxes!(axleft, axright)
