@@ -11,7 +11,7 @@ using OkMakieToolkits
 using Dates
 using OkFiles
 # clustering
-# using MLJ # for standardization
+using MLJ # for standardization
 
 
 df_ge = CSV.read("data/temp/PhaseTestEQK_GE_3yr_180d_500md_2023J30.csv", DataFrame)
@@ -38,6 +38,29 @@ transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :event
 fulldt = df.dt |> unique |> sort
 transform!(df, :dt => ByRow(datetime2julian) => :x)
 transform!(df, :eventTime => ByRow(datetime2julian) => :eventTime_x)
+
+
+# # Standardization
+targetcols = [:eventTime_x, :eventLon, :eventLat]
+df = coerce(df, (targetcols .=> Continuous)...)
+EQK = select(df, targetcols...)
+se = schema(EQK)
+@assert all(se.scitypes .== Continuous)
+
+Standardizer = @load Standardizer pkg = MLJModels
+stand1 = Standardizer()
+mach = machine(stand1, EQK)
+fit!(mach)
+
+# standardization makes the results as mean ~0 and std ~1
+combine(MLJ.transform(mach, EQK), All() .=> mean)
+combine(MLJ.transform(mach, EQK), All() .=> std)
+
+
+
+
+
+
 
 groupdfs = groupby(df, [:prp])
 dfg1 = groupdfs[1]
