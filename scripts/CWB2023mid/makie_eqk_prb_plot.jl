@@ -13,6 +13,7 @@ using OkFiles
 # clustering
 using MLJ # for standardization
 using Clustering
+using OkMLModels
 # sperical distance
 using SphericalGeometry
 
@@ -33,6 +34,7 @@ end
 
 df = vcat(df_ge, df_gm, df_mix)
 
+## Preprocess
 # convert `probabilityTimeStr` to `DateTime`
 transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
@@ -42,22 +44,32 @@ fulldt = df.dt |> unique |> sort
 transform!(df, :dt => ByRow(datetime2julian) => :x)
 transform!(df, :eventTime => ByRow(datetime2julian) => :eventTime_x)
 
+# Add event id
+eachevent = groupby(df, [:eventTime, :eventSize, :eventLat, :eventLon])
+transform!(eachevent, groupindices => :eventId)
 
-# # Standardization
+## Event clustering
 targetcols = [:eventTime_x, :eventLon, :eventLat]
-df = coerce(df, (targetcols .=> Continuous)...)
-EQK = select(df, targetcols...)
-se = schema(EQK)
-@assert all(se.scitypes .== Continuous)
+EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false)
 
-Standardizer = @load Standardizer pkg = MLJModels
-stand1 = Standardizer()
-mach = machine(stand1, EQK)
-fit!(mach)
+# Standardization/Normalization
+eqk = @view EQK[!, targetcols]
+eqk_min = combine(eqk, All() .=> minimum; renamecols=false) # |> eachrow |> only
+eqk_max = combine(eqk, All() .=> maximum; renamecols=false) # |> eachrow |> only
+eqk_diff = combine(vcat(eqk_min, eqk_max), All() .=> diff; renamecols=false)
+eqk_min = eqk_min |> eachrow |> only
+eqk_max = eqk_max |> eachrow |> only
+eqk_diff = eqk_diff |> eachrow |> only
+eqk_crad = Dict(
+    eventTime_x => 30, #days
+    eventLon => 0.1, # deg., ~11 km
+    eventLat => 0.1,
+)
 
-# standardization makes the results as mean ~0 and std ~1
-combine(MLJ.transform(mach, EQK), All() .=> mean)
-combine(MLJ.transform(mach, EQK), All() .=> std)
+
+transform!(eqk, All() .=> OkMLModels.normalize; renamecols=false)
+# noted that `EQK` is modified as `eqk` is a view of `EQK`
+
 
 # radius by dimension
 grid_latlon =
