@@ -66,7 +66,8 @@ eqk_crad = Dict(
 ) # radius for DBSCAN clustering
 
 transform!(eqk_info, :transform => ByRow(x -> eqk_crad[x]) => :radius)
-transform!(eqk_info, [:minimum, :maximum, :radius] => ByRow((mi, ma, r) -> OkMLModels.normalize(r + mi, mi, ma)) => :radius0)
+transform!(eqk_info, [:minimum, :maximum, :radius] => ByRow((mi, ma, r) -> OkMLModels.normalize(r + mi, mi, ma)) => :radius0) # Normalized radius
+transform!(eqk_info, :radius0 => (x -> x ./ x[1]) => :expand_factor) # Normalized eqk dataset should be divided by expand factor.
 
 # normalize table and put weights on different variables
 transform!(eqk, All() .=> OkMLModels.normalize; renamecols=false)
