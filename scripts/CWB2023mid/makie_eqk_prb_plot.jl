@@ -52,21 +52,23 @@ transform!(eachevent, groupindices => :eventId)
 targetcols = [:eventTime_x, :eventLon, :eventLat]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false)
 
-# Standardization/Normalization
+## Standardization/Normalization
+# normalized radius for DBSCAN
 eqk = @view EQK[!, targetcols]
-eqk_min = combine(eqk, All() .=> minimum; renamecols=false) # |> eachrow |> only
-eqk_max = combine(eqk, All() .=> maximum; renamecols=false) # |> eachrow |> only
-eqk_diff = combine(vcat(eqk_min, eqk_max), All() .=> diff; renamecols=false)
-eqk_min = eqk_min |> eachrow |> only
-eqk_max = eqk_max |> eachrow |> only
-eqk_diff = eqk_diff |> eachrow |> only
+eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
+insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
+eqk_info = permutedims(eqk_minmax, :transform)
+
 eqk_crad = Dict(
-    eventTime_x => 30, #days
-    eventLon => 0.1, # deg., ~11 km
-    eventLat => 0.1,
-)
+    "eventTime_x" => 30.0, #days
+    "eventLon" => 0.1, # deg., ~11 km
+    "eventLat" => 0.1,
+) # radius for DBSCAN clustering
 
+transform!(eqk_info, :transform => ByRow(x -> eqk_crad[x]) => :radius)
+transform!(eqk_info, [:minimum, :maximum, :radius] => ByRow((mi, ma, r) -> OkMLModels.normalize(r + mi, mi, ma)) => :radius0)
 
+# normalize table and put weights on different variables
 transform!(eqk, All() .=> OkMLModels.normalize; renamecols=false)
 # noted that `EQK` is modified as `eqk` is a view of `EQK`
 
