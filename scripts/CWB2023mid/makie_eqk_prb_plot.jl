@@ -12,6 +12,10 @@ using Dates
 using OkFiles
 # clustering
 using MLJ # for standardization
+using Clustering
+using OkMLModels
+# sperical distance
+using SphericalGeometry
 
 
 df_ge = CSV.read("data/temp/PhaseTestEQK_GE_3yr_180d_500md_2023J30.csv", DataFrame)
@@ -30,33 +34,85 @@ end
 
 df = vcat(df_ge, df_gm, df_mix)
 
+## Preprocess
 # convert `probabilityTimeStr` to `DateTime`
 transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
+transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), :julianday)) => :eventTime_x)
 
-# full list of datetime; TimeAsX.
-fulldt = df.dt |> unique |> sort
-transform!(df, :dt => ByRow(datetime2julian) => :x)
-transform!(df, :eventTime => ByRow(datetime2julian) => :eventTime_x)
+# Event location
+transform!(df, :eventLat => ByRow(x -> Latitude(x, :deg)); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> Longitude(x, :deg)); renamecols=false)
 
 
-# # Standardization
+# Add event id
+eachevent = groupby(df, [:eventTime, :eventSize, :eventLat, :eventLon])
+transform!(eachevent, groupindices => :eventId)
+
+## Event clustering
 targetcols = [:eventTime_x, :eventLon, :eventLat]
-df = coerce(df, (targetcols .=> Continuous)...)
-EQK = select(df, targetcols...)
-se = schema(EQK)
-@assert all(se.scitypes .== Continuous)
-
-Standardizer = @load Standardizer pkg = MLJModels
-stand1 = Standardizer()
-mach = machine(stand1, EQK)
-fit!(mach)
-
-# standardization makes the results as mean ~0 and std ~1
-combine(MLJ.transform(mach, EQK), All() .=> mean)
-combine(MLJ.transform(mach, EQK), All() .=> std)
+EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false)
 
 
+## Standardization/Normalization
+# normalized radius for DBSCAN
+eqk = @view EQK[!, targetcols]
+eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
+insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
+
+# a "dictionary" for indexing variable's range
+evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
+
+eqk_info = permutedims(eqk_minmax, :transform)
+
+eqk_crad = Dict( # SETME:
+    "eventTime_x" => 30.0, #days
+    "eventLon" => 0.1, # deg., ~11 km
+    "eventLat" => 0.1,
+) # radius for DBSCAN clustering
+
+transform!(eqk_info, :transform => ByRow(x -> eqk_crad[x]) => :radius)
+transform!(eqk_info, [:minimum, :maximum, :radius] => ByRow((mi, ma, r) -> OkMLModels.normalize(r + mi, mi, ma)) => :radius0) # Normalized radius
+transform!(eqk_info, :radius0 => (x -> x[1] ./ x) => :expand_factor) # Normalized eqk dataset should be divided by expand factor.
+permutedims(eqk_info, :transform)
+
+# normalize table and put weights on different variables
+transform!(eqk, All() .=> OkMLModels.normalize; renamecols=false)
+# noted that `EQK` is modified as `eqk` is a view of `EQK`
+
+
+# radius by dimension
+grid_latlon =
+    EQK.eventLat
+EQK.eventLon
+
+twopoints = SphericalGeometry.Point.(
+    [24.2, 24.3],
+    [121.0, 121.0],
+)
+angular_distance(twopoints...) * 6371 / 360 * 2π
+# Verified with matlab code: deg2km(distance('gc', [24.2, 121.0], [24.3, 121.0]))
+
+
+r_latlon = 0.1
+EQK.eventLat |> diff .|> abs |> unique
+r_latlon = 0.1
+
+
+dfstd = MLJ.transform(mach, EQK)
+dfstd.eventTime_x * 5 |> hist
+df.eventTime_x |> hist
+
+dfstd.eventLat |> hist
+df.eventLat |> hist
+
+# CHECKPOINT: Noted that in EQK and df, `targetcols` are the original
+
+
+# # Clusterting by dbscan
+dbresult = dbscan(Matrix(EQK[1:10000, [:eventTime_x]])',
+    30, # 30 days
+)
 
 
 
