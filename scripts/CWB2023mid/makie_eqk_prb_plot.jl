@@ -16,6 +16,7 @@ using Clustering
 using OkMLModels
 # sperical distance
 using SphericalGeometry
+using EventSpaceAlgebra
 
 
 df_ge = CSV.read("data/temp/PhaseTestEQK_GE_3yr_180d_500md_2023J30.csv", DataFrame)
@@ -38,11 +39,11 @@ df = vcat(df_ge, df_gm, df_mix)
 # convert `probabilityTimeStr` to `DateTime`
 transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
-transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), :julianday)) => :eventTime_x)
+transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
 # Event location
-transform!(df, :eventLat => ByRow(x -> Latitude(x, :deg)); renamecols=false)
-transform!(df, :eventLon => ByRow(x -> Longitude(x, :deg)); renamecols=false)
+transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
 
 
 # Add event id
@@ -50,8 +51,8 @@ eachevent = groupby(df, [:eventTime, :eventSize, :eventLat, :eventLon])
 transform!(eachevent, groupindices => :eventId)
 
 ## Event clustering
-targetcols = [:eventTime_x, :eventLon, :eventLat]
-EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false)
+targetcols = [:eventTime, :eventLon, :eventLat]
+EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
 
 
 ## Standardization/Normalization
@@ -63,28 +64,35 @@ insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
 # a "dictionary" for indexing variable's range
 evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
 
-eqk_info = permutedims(eqk_minmax, :transform)
-
 eqk_crad = Dict( # SETME:
-    "eventTime_x" => 30.0, #days
+    "eventTime" => 30.0, #days
     "eventLon" => 0.1, # deg., ~11 km
     "eventLat" => 0.1,
 ) # radius for DBSCAN clustering
 
-transform!(eqk_info, :transform => ByRow(x -> eqk_crad[x]) => :radius)
-transform!(eqk_info, [:minimum, :maximum, :radius] => ByRow((mi, ma, r) -> OkMLModels.normalize(r + mi, mi, ma)) => :radius0) # Normalized radius
-transform!(eqk_info, :radius0 => (x -> x[1] ./ x) => :expand_factor) # Normalized eqk dataset should be divided by expand factor.
-permutedims(eqk_info, :transform)
+latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum
 
-# normalize table and put weights on different variables
-transform!(eqk, All() .=> OkMLModels.normalize; renamecols=false)
-# noted that `EQK` is modified as `eqk` is a view of `EQK`
+rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
+rrratio_maxspace = latrange / eqk_crad["eventLat"]
 
 
-# radius by dimension
-grid_latlon =
-    EQK.eventLat
-EQK.eventLon
+normalize(el::EventSpaceAlgebra.Spatial) = el
+function normalize(el::EventSpaceAlgebra.Temporal)
+    tp = typeof(el)
+    newval = (get_value(el) - get_value(minimum(EQK.eventTime))) /
+             eqk_crad["eventTime"] * eqk_crad["eventLat"]
+    tp(newval, get_unit(el))
+end
+
+EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
+
+# # Clusterting by dbscan
+dbresult = dbscan(get_value.(Matrix(EQK_n))', eqk_crad["eventLat"])
+
+# CHECKPOINT: clustering results need to be verified
+# - remove any eventTime_x
+
+
 
 twopoints = SphericalGeometry.Point.(
     [24.2, 24.3],
@@ -109,10 +117,7 @@ df.eventLat |> hist
 # CHECKPOINT: Noted that in EQK and df, `targetcols` are the original
 
 
-# # Clusterting by dbscan
-dbresult = dbscan(Matrix(EQK[1:10000, [:eventTime_x]])',
-    30, # 30 days
-)
+
 
 
 
