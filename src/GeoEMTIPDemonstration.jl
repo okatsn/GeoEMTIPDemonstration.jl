@@ -1,7 +1,5 @@
 module GeoEMTIPDemonstration
 
-include("timespacetypes.jl")
-export Longitude, Latitude, EventTime, Degree, JulianDay, AngularDistance, EpochDuration, ValueUnit, GeneralSpace, Distance
 
 
 # # Load abstract type for preprocessing and figureplot
