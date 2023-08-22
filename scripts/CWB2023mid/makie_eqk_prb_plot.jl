@@ -143,6 +143,10 @@ end
 
 
 # Map plot
+# https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
+# OpenStreetMapXPlot.jl with Makie: https://github.com/JuliaDynamics/Agents.jl/issues/437
+# common geographics datasets such as location of shoreline, rivers and political boundaries https://juliageo.org/GeoDatasets.jl/dev/
+
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 using CairoMakie, GeoMakie
