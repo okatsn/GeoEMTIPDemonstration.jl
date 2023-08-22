@@ -79,7 +79,7 @@ rrratio_maxspace = latrange / eqk_crad["eventLat"]
 normalize(el::EventSpaceAlgebra.Spatial) = el
 function normalize(el::EventSpaceAlgebra.Temporal)
     tp = typeof(el)
-    newval = (get_value(el) - get_value(minimum(EQK.eventTime))) /
+    newval = (get_value(el - minimum(EQK.eventTime))) /
              eqk_crad["eventTime"] * eqk_crad["eventLat"]
     tp(newval, get_unit(el))
 end
@@ -88,8 +88,15 @@ EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
 
 # # Clusterting by dbscan
 dbresult = dbscan(get_value.(Matrix(EQK_n))', eqk_crad["eventLat"])
+insertcols!(EQK, :clusterId => dbresult.assignments)
 
-# CHECKPOINT: clustering results need to be verified
+describe(EQK)
+
+
+
+
+
+# CHECKPOINT:
 # - remove any eventTime_x
 
 
