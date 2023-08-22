@@ -11,11 +11,7 @@ using OkMakieToolkits
 using Dates
 using OkFiles
 # clustering
-using MLJ # for standardization
 using Clustering
-using OkMLModels
-# sperical distance
-using SphericalGeometry
 using EventSpaceAlgebra
 
 
@@ -82,7 +78,7 @@ function normalize(el::EventSpaceAlgebra.Temporal)
     newval = (get_value(el - minimum(EQK.eventTime))) /
              eqk_crad["eventTime"] * eqk_crad["eventLat"]
     tp(newval, get_unit(el))
-end
+end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
 
 EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
 
@@ -90,75 +86,55 @@ EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
 dbresult = dbscan(get_value.(Matrix(EQK_n))', eqk_crad["eventLat"])
 insertcols!(EQK, :clusterId => dbresult.assignments)
 
-describe(EQK)
+event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 
-
-
-
+transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 # CHECKPOINT:
 # - remove any eventTime_x
 
-
-
-twopoints = SphericalGeometry.Point.(
-    [24.2, 24.3],
-    [121.0, 121.0],
-)
-angular_distance(twopoints...) * 6371 / 360 * 2π
-# Verified with matlab code: deg2km(distance('gc', [24.2, 121.0], [24.3, 121.0]))
-
-
-r_latlon = 0.1
-EQK.eventLat |> diff .|> abs |> unique
-r_latlon = 0.1
-
-
-dfstd = MLJ.transform(mach, EQK)
-dfstd.eventTime_x * 5 |> hist
-df.eventTime_x |> hist
-
-dfstd.eventLat |> hist
-df.eventLat |> hist
-
-# CHECKPOINT: Noted that in EQK and df, `targetcols` are the original
-
-
-
-
-
-
-
-
-groupdfs = groupby(df, [:prp])
+groupdfs = groupby(df, [:prp, :trial, :clusterId])
 dfg1 = groupdfs[1]
 
 function eqkprb_plot(dfg1)
-    probplt = data(dfg1) * visual(Lines) * mapping(:x, :probabilityMean, color=:trial)
+    dfg = deepcopy(dfg1)
+    transform!(dfg, :dt => ByRow(datetime2julian) => :x)
+    transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
+
+    probplt = data(dfg) * visual(Lines) * mapping(:x, :probabilityMean)
+    eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
+
     f = Figure()
-    axleft, axright = twinaxis(f[1, 1])
-    linkxaxes!(axleft, axright)
-    # axleft = Axis(f[1, 1])
-    draw!(axleft, probplt)
-
-    evtlist = let uniqcols = [:eventTime, :eventTime_x, :eventSize, :eventLat, :eventLon]
-        evtlist = combine(groupby(dfg1, uniqcols), uniqcols .=> unique)
-    end
-
-    evtx = evtlist.eventTime_x
-    evtsz = evtlist.eventSize
-    scatter!(axright, evtx, evtsz, markersize=5 .+ evtsz * 10, color=:red)
+    axleft, axright = twinaxis(f[1, 1];
+        left_ax=(; ylabel="probability"),
+        right_ax=(; ylabel="event magnitude"),
+        right_color=:red)
 
     for ax in [axleft, axright]
-        datetimeticks!(ax, df.dt, df.x, Month(1))
+        datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(3))
         ax.xticklabelrotation = 0.2π
     end
+
+    # axleft = Axis(f[1, 1])
+
+    draw!(axleft, probplt)
+    draw!(axright, eqkplt)
+
+    # display(f)
+    # Makie.inline!(true)
+    # Makie.current_axis!(axleft)
+    Makie.update_state_before_display!(f) # this has the same effect of display(f) but without displaying it. It is essential for axes to be correctly linked.
+
+    # xlims!(axright, getlimits(axleft, 1))
+    linkxaxes!(axleft, axright)
     f
 end
 
-for dfg1 in groupdfs[1:2]
-    with_theme(resolution=(1200, 300), Scatter=(alpha=0.3, marker=:circle)) do
-        f = eqkprb_plot(dfg1)
+
+
+for dfg in groupdfs[10:15]
+    with_theme(resolution=(1200, 300), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.5)) do
+        f = eqkprb_plot(dfg)
         display(f)
     end
 end
