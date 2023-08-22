@@ -153,10 +153,11 @@ using GeoInterface
 
 # Acquire data
 it_states = Downloads.download("https://github.com/openpolis/geojson-italy/raw/master/geojson/limits_IT_provinces.geojson")
-geo = GeoJSON.read(read(it_states, String))
+tw_counties = Downloads.download("https://github.com/g0v/twgeojson/raw/master/json/twCounty2010.geo.json")
+geo = GeoJSON.read(read(tw_counties, String))
 
 fig = Figure()
-ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=12.5 +lat_0=42", lonlims=(6, 19), latlims=(36, 50))
+ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=122 +lat_0=22.5", lonlims=(118, 122.3), latlims=(21.8, 25.8))
 poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false);
 # datalims!(ga) # this doesn't work
 
