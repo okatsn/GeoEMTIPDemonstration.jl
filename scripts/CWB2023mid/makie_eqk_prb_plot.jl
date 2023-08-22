@@ -1,5 +1,6 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
+using GeoMakie
 using Statistics
 using LaTeXStrings
 using Printf
@@ -133,8 +134,30 @@ end
 
 
 for dfg in groupdfs[10:15]
-    with_theme(resolution=(1200, 300), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.5)) do
+    with_theme(resolution=(1200, 300), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end
 end
+
+
+
+# Map plot
+
+using CairoMakie, GeoMakie
+using GeoMakie.GeoJSON
+using Downloads
+using GeometryBasics
+using GeoInterface
+
+# Acquire data
+it_states = Downloads.download("https://github.com/openpolis/geojson-italy/raw/master/geojson/limits_IT_provinces.geojson")
+geo = GeoJSON.read(read(it_states, String))
+
+fig = Figure()
+ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=12.5 +lat_0=42", lonlims=(12, 13), latlims=(40, 44))
+poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false);
+datalims!(ga)
+xlims!(ga, 12, 13)
+
+fig
