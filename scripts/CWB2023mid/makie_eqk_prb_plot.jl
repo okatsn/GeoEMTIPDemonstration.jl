@@ -143,6 +143,7 @@ end
 
 
 # Map plot
+# From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 using CairoMakie, GeoMakie
 using GeoMakie.GeoJSON
@@ -155,9 +156,8 @@ it_states = Downloads.download("https://github.com/openpolis/geojson-italy/raw/m
 geo = GeoJSON.read(read(it_states, String))
 
 fig = Figure()
-ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=12.5 +lat_0=42", lonlims=(12, 13), latlims=(40, 44))
+ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=12.5 +lat_0=42", lonlims=(6, 19), latlims=(36, 50))
 poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false);
-datalims!(ga)
-xlims!(ga, 12, 13)
+# datalims!(ga) # this doesn't work
 
 fig
