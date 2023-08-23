@@ -1,5 +1,6 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
+using GeoMakie
 using Statistics
 using LaTeXStrings
 using Printf
@@ -133,8 +134,36 @@ end
 
 
 for dfg in groupdfs[10:15]
-    with_theme(resolution=(1200, 300), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.5)) do
+    with_theme(resolution=(1200, 300), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end
 end
+
+
+
+# Map plot
+# https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
+# OpenStreetMapXPlot.jl with Makie: https://github.com/JuliaDynamics/Agents.jl/issues/437
+# common geographics datasets such as location of shoreline, rivers and political boundaries https://juliageo.org/GeoDatasets.jl/dev/
+
+# From example: https://geo.makie.org/stable/examples/#Italy's-states
+
+using WGLMakie, GeoMakie
+using GeoMakie.GeoJSON
+using Downloads
+using GeometryBasics
+using GeoInterface
+
+# Acquire data
+it_states = Downloads.download("https://github.com/openpolis/geojson-italy/raw/master/geojson/limits_IT_provinces.geojson")
+tw_counties = Downloads.download("https://github.com/g0v/twgeojson/raw/master/json/twCounty2010.geo.json")
+geo = GeoJSON.read(read(tw_counties, String))
+
+fig = Figure()
+ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(118, 122.3), latlims=(21.8, 25.8))
+poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false);
+# datalims!(ga) # this doesn't work
+
+
+fig
