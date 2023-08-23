@@ -95,31 +95,31 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 # - remove any eventTime_x
 
 groupdfs = groupby(df, [:prp, :trial, :clusterId])
-dfg1 = groupdfs[1]
+dfg1 = groupdfs[15]
 
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines) * mapping(:x, :probabilityMean)
+    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(:eventId) * mapping(layout=:InStation)
     eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
 
     f = Figure()
-    axleft, axright = twinaxis(f[1, 1];
-        left_ax=(; ylabel="probability"),
-        right_ax=(; ylabel="event magnitude"),
-        right_color=:red)
+    draw!(f[:, :], probplt)
 
-    for ax in [axleft, axright]
-        datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(3))
-        ax.xticklabelrotation = 0.2π
+    axs = filter(x -> x isa Axis, f.content)
+
+    rightaxs = twinaxis.(axs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    draw!.(rightaxs, Ref(eqkplt))
+
+    for (axleft, axright) in zip(axs, rightaxs)
+        for ax in [axleft, axright]
+            ax.xticklabelrotation = 0.2π
+            datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(3))
+        end
+        linkxaxes!(axleft, axright)
     end
-
-    # axleft = Axis(f[1, 1])
-
-    draw!(axleft, probplt)
-    draw!(axright, eqkplt)
 
     # display(f)
     # Makie.inline!(true)
@@ -127,14 +127,13 @@ function eqkprb_plot(dfg1)
     Makie.update_state_before_display!(f) # this has the same effect of display(f) but without displaying it. It is essential for axes to be correctly linked.
 
     # xlims!(axright, getlimits(axleft, 1))
-    linkxaxes!(axleft, axright)
     f
 end
 
 
 
 for dfg in groupdfs[10:15]
-    with_theme(resolution=(1200, 300), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
+    with_theme(resolution=(1200, 600), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end
