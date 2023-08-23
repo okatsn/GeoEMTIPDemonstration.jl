@@ -149,7 +149,7 @@ end
 
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
-using GLMakie, GeoMakie
+using WGLMakie, GeoMakie
 using GeoMakie.GeoJSON
 using Downloads
 using GeometryBasics
