@@ -94,24 +94,26 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 # - remove any eventTime_x
 
 groupdfs = groupby(df, [:prp, :trial, :clusterId])
-dfg1 = groupdfs[15]
+dfg1 = groupdfs[14]
 
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
-
-    probplt = data(dfg) * visual(Lines, colormap=:blues) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter")
-    if length(unique(dfg.eventId)) > 1
-        probplt *= mapping(color=:eventId)
-    end
+    @assert all([isequal(sort(subdf.x), subdf.x) for subdf in groupby(dfg, :eventId)])
 
     eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
 
     f = Figure()
-    draw!(f[:, :], probplt)
+    # draw!(f[:, :], probplt)
+    axleft = Axis(f[1, 1])
+    for tmp in groupby(dfg, :eventId)
+        lines!(axleft, tmp.x, tmp.probabilityMean; colormap=:blues)
+    end
 
-    leftaxs = filter(x -> x isa Axis, f.content)
+    f
+
+    leftaxs = [axleft]
 
     rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, Ref(eqkplt))
