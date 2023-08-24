@@ -1,5 +1,6 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
+using Chain
 using GeoMakie
 using Statistics
 using LaTeXStrings
@@ -16,9 +17,9 @@ using Clustering
 using EventSpaceAlgebra
 
 
-df_ge = CSV.read("data/temp/PhaseTestEQK_GE_3yr_180d_500md_2023J30.csv", DataFrame)
-df_gm = CSV.read("data/temp/PhaseTestEQK_GM_3yr_180d_500md_2023J30.csv", DataFrame)
-df_mix = CSV.read("data/temp/PhaseTestEQK_MIX_3yr_180d_500md_2023J30.csv", DataFrame)
+df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
+df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
+df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
 
 tagdfs = Dict(
     "GE" => df_ge,
@@ -43,11 +44,9 @@ transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
 transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
 
 
-# Add event id
-eachevent = groupby(df, [:eventTime, :eventSize, :eventLat, :eventLon])
-transform!(eachevent, groupindices => :eventId)
 
 ## Event clustering
+eachevent = groupby(df, :eventId)
 targetcols = [:eventTime, :eventLon, :eventLat]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
 
@@ -102,23 +101,26 @@ function eqkprb_plot(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(:eventId) * mapping(layout=:InStation)
+    probplt = data(dfg) * visual(Lines, colormap=:blues) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter")
+    if length(unique(dfg.eventId)) > 1
+        probplt *= mapping(color=:eventId)
+    end
+
     eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
 
     f = Figure()
     draw!(f[:, :], probplt)
 
-    axs = filter(x -> x isa Axis, f.content)
+    leftaxs = filter(x -> x isa Axis, f.content)
 
-    rightaxs = twinaxis.(axs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, Ref(eqkplt))
 
-    for (axleft, axright) in zip(axs, rightaxs)
+    for (axleft, axright) in zip(leftaxs, rightaxs)
         for ax in [axleft, axright]
             ax.xticklabelrotation = 0.2π
             datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(3))
         end
-        linkxaxes!(axleft, axright)
     end
 
     # display(f)
@@ -127,6 +129,7 @@ function eqkprb_plot(dfg1)
     Makie.update_state_before_display!(f) # this has the same effect of display(f) but without displaying it. It is essential for axes to be correctly linked.
 
     # xlims!(axright, getlimits(axleft, 1))
+    linkxaxes!(f)
     f
 end
 
