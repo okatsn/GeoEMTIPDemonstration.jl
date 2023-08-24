@@ -1,5 +1,6 @@
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
+using ColorSchemes
 using Chain
 using GeoMakie
 using Statistics
@@ -17,10 +18,21 @@ using CategoricalArrays
 using Clustering
 using EventSpaceAlgebra
 
-
+# SETME
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
+
+# palletes for `draw` of AlgebraOfGraphic (AoG)
+# KEYNOTE:
+# - For categorical array, it should be a vector.
+# - For continuous array, use cgrad (e.g., `cgrad(:Paired_4)`).
+# - AoG may ignore the `colormap` keyword, because AoG may supports multiple colormaps. See the [issue](https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/329).
+# - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
+linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:1) |> reverse
+
+
+# Merge DataFrame
 
 tagdfs = Dict(
     "GE" => df_ge,
@@ -33,14 +45,16 @@ for (tag, df) in tagdfs
 end
 
 df = vcat(df_ge, df_gm, df_mix)
-transform!(df, :eventId => CategoricalArray; renamecols=false) # This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
-# Try the followings to figure out:
-#
-# ```
-# tmp = append!(DataFrame(x=1:10, y=randn(10), type1=UInt(1), type2="a"), DataFrame(x=1:10, y=randn(10), type1=UInt(2), type2="b"))
-# data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type1) |> draw
-# data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type2) |> draw
-# ```
+
+# Categorize :eventId
+# - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
+# - Try the followings to figure out:
+#   ```
+#   tmp = append!(DataFrame(x=1:10, y=randn(10), type1=UInt(1), type2="a"), DataFrame(x=1:10, y=randn(10), type1=UInt(2), type2="b"))
+#   data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type1) |> draw
+#   data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type2) |> draw
+#   ```
+transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
 
@@ -105,23 +119,25 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 # CHECKPOINT:
 # - remove any eventTime_x
 
-groupdfs = groupby(df, [:prp, :trial, :clusterId])
+groupdfs = groupby(df, [:trial, :clusterId])
 dfg1 = groupdfs[15]
+
+
 
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter")
-    if length(unique(dfg.eventId)) > 1
-        probplt *= mapping(color=:eventId)
-    end
+    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(row=:prp)
+    probplt *= mapping(color=:eventId)
 
     eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
 
     f = Figure()
-    draw!(f[:, :], probplt)
+    draw!(f[:, :], probplt; palettes=(; color=linecolors))
+
+
 
     leftaxs = filter(x -> x isa Axis, f.content)
 
@@ -147,8 +163,10 @@ end
 
 
 
+
+
 for dfg in groupdfs[10:15]
-    with_theme(resolution=(1200, 600), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; colormap=:blues, alpha=0.6, linewidth=0.7)) do
+    with_theme(resolution=(800, 1000), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end
