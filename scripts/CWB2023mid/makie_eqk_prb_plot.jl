@@ -12,6 +12,7 @@ using GeoEMTIPDemonstration
 using OkMakieToolkits
 using Dates
 using OkFiles
+using CategoricalArrays
 # clustering
 using Clustering
 using EventSpaceAlgebra
@@ -32,6 +33,17 @@ for (tag, df) in tagdfs
 end
 
 df = vcat(df_ge, df_gm, df_mix)
+transform!(df, :eventId => CategoricalArray; renamecols=false) # This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
+# Try the followings to figure out:
+#
+# ```
+# tmp = append!(DataFrame(x=1:10, y=randn(10), type1=UInt(1), type2="a"), DataFrame(x=1:10, y=randn(10), type1=UInt(2), type2="b"))
+# data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type1) |> draw
+# data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type2) |> draw
+# ```
+
+
+
 
 ## Preprocess
 # convert `probabilityTimeStr` to `DateTime`
@@ -101,7 +113,7 @@ function eqkprb_plot(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines, colormap=:blues) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter")
+    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter")
     if length(unique(dfg.eventId)) > 1
         probplt *= mapping(color=:eventId)
     end
@@ -136,7 +148,7 @@ end
 
 
 for dfg in groupdfs[10:15]
-    with_theme(resolution=(1200, 600), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
+    with_theme(resolution=(1200, 600), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; colormap=:blues, alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end
