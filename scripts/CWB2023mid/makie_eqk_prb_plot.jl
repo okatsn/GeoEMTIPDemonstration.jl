@@ -18,6 +18,19 @@ using CategoricalArrays
 using Clustering
 using EventSpaceAlgebra
 
+# Map plot
+# https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
+# OpenStreetMapXPlot.jl with Makie: https://github.com/JuliaDynamics/Agents.jl/issues/437
+# common geographics datasets such as location of shoreline, rivers and political boundaries https://juliageo.org/GeoDatasets.jl/dev/
+
+# From example: https://geo.makie.org/stable/examples/#Italy's-states
+
+using WGLMakie, GeoMakie
+using GeoMakie.GeoJSON
+using Downloads
+using GeometryBasics
+using GeoInterface
+
 # SETME
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
@@ -123,6 +136,9 @@ groupdfs = groupby(df, [:trial, :clusterId])
 dfg1 = groupdfs[15]
 
 
+tw_counties = Downloads.download("https://github.com/g0v/twgeojson/raw/master/json/twCounty2010.geo.json")
+geo = GeoJSON.read(read(tw_counties, String))
+
 lenprp = length(unique(df.prp))
 
 
@@ -134,7 +150,7 @@ function eqkprb_plot(dfg1)
     probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(layout=:prp)
     probplt *= mapping(color=:eventId)
 
-    eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
+    eqkplt = data(dfg) * visual(Scatter) * mapping(:evtx, :eventSize)
 
     f = Figure()
     # Draw probability plot
@@ -167,6 +183,16 @@ function eqkprb_plot(dfg1)
 
     # xlims!(axright, getlimits(axleft, 1))
     linkxaxes!(f)
+
+    panel_map = f[:, end+1] = GridLayout()
+    ga = GeoAxis(panel_map[:, :]; dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(118, 122.3), latlims=(21.8, 25.8))
+    poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false)
+
+    epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
+    # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
+    draw!(ga, epi_plt)
+
+    colsize!(f.layout, 1, Relative(0.7))
     f
 end
 
@@ -175,36 +201,8 @@ end
 
 
 for dfg in groupdfs[10:15]
-    with_theme(resolution=(800, 1000), Scatter=(marker=:star5, markersize=10, alpha=0.3), Lines=(; alpha=0.6, linewidth=0.7)) do
+    with_theme(resolution=(1200, 700), Scatter=(marker=:star5, markersize=10, alpha=0.3, color=:red), Lines=(; alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end
 end
-
-
-
-# Map plot
-# https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
-# OpenStreetMapXPlot.jl with Makie: https://github.com/JuliaDynamics/Agents.jl/issues/437
-# common geographics datasets such as location of shoreline, rivers and political boundaries https://juliageo.org/GeoDatasets.jl/dev/
-
-# From example: https://geo.makie.org/stable/examples/#Italy's-states
-
-using WGLMakie, GeoMakie
-using GeoMakie.GeoJSON
-using Downloads
-using GeometryBasics
-using GeoInterface
-
-# Acquire data
-it_states = Downloads.download("https://github.com/openpolis/geojson-italy/raw/master/geojson/limits_IT_provinces.geojson")
-tw_counties = Downloads.download("https://github.com/g0v/twgeojson/raw/master/json/twCounty2010.geo.json")
-geo = GeoJSON.read(read(tw_counties, String))
-
-fig = Figure()
-ga = GeoAxis(fig[1, 1]; dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(118, 122.3), latlims=(21.8, 25.8))
-poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false);
-# datalims!(ga) # this doesn't work
-
-
-fig
