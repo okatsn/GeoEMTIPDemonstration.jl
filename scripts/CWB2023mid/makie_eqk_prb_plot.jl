@@ -148,10 +148,15 @@ function eqkprb_plot(dfg1)
     rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, Ref(eqkplt))
 
-    for (axleft, axright) in zip(leftaxs, rightaxs)
+    lenax = length(leftaxs)
+    for (i, (axleft, axright)) in enumerate(zip(leftaxs, rightaxs))
         for ax in [axleft, axright]
             ax.xticklabelrotation = 0.2π
             datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(3))
+            if i != lenax
+                ax.xticklabelsvisible[] = false
+                ax.xticksvisible[] = false
+            end # Leave only the ticks & tick labels of the bottom panel.
         end
     end
 
