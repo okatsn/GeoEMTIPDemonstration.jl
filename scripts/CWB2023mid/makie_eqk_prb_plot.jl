@@ -35,6 +35,7 @@ using GeoInterface
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
+station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 
 # palletes for `draw` of AlgebraOfGraphic (AoG)
 # KEYNOTE:
@@ -43,6 +44,8 @@ df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_
 # - AoG may ignore the `colormap` keyword, because AoG may supports multiple colormaps. See the [issue](https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/329).
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
 linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:1) |> reverse
+
+
 
 
 # Merge DataFrame
@@ -147,7 +150,7 @@ function eqkprb_plot(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(layout=:prp)
+    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probability around epicenters") * mapping(layout=:prp)
     probplt *= mapping(color=:eventId)
 
     eqkplt = data(dfg) * visual(Scatter) * mapping(:evtx, :eventSize)
@@ -168,7 +171,7 @@ function eqkprb_plot(dfg1)
     for (i, (axleft, axright)) in enumerate(zip(leftaxs, rightaxs))
         for ax in [axleft, axright]
             ax.xticklabelrotation = 0.2π
-            datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(3))
+            datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(1))
             if i != lenax
                 ax.xticklabelsvisible[] = false
                 ax.xticksvisible[] = false
@@ -185,23 +188,28 @@ function eqkprb_plot(dfg1)
     linkxaxes!(f)
 
     panel_map = f[:, end+1] = GridLayout()
-    ga = GeoAxis(panel_map[:, :]; dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(118, 122.3), latlims=(21.8, 25.8))
-    poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.5), shading=false)
+    ga = GeoAxis(panel_map[:, :]; dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(119.4, 122.4), latlims=(21.4, 25.8))
+    poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.1), shading=false)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
-    draw!(ga, epi_plt)
+    draw!(ga, epi_plt) # use AoG to plot epicenter to allow setting scatter markers in `with_theme`.
 
-    colsize!(f.layout, 1, Relative(0.7))
+    scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
+    text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
+        align=station_location.TextAlign, fontsize=10)
+
+    colsize!(f.layout, 1, Relative(0.6))
     f
 end
 
 
+# Loaded table preprocessing
+transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
-
-for dfg in groupdfs[10:15]
-    with_theme(resolution=(1200, 700), Scatter=(marker=:star5, markersize=10, alpha=0.3, color=:red), Lines=(; alpha=0.6, linewidth=0.7)) do
+for dfg in groupdfs[14:15]
+    with_theme(resolution=(1000, 600), Scatter=(marker=:star5, markersize=10, alpha=0.7, color=:red), Lines=(; alpha=0.6, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
     end

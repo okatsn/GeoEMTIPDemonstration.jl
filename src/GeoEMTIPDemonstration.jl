@@ -44,9 +44,9 @@ export TrainTestPartition23a
 include("figure/figure23_molchan.jl")
 export MolchanComposite23a
 
-
-
-
 export figureplot
+
+include("stationlocation_shift.jl")
+export station_location_text_shift
 
 end
