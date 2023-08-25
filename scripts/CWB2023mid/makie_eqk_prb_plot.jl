@@ -200,6 +200,9 @@ function eqkprb_plot(dfg1)
         align=station_location.TextAlign, fontsize=10)
 
     colsize!(f.layout, 1, Relative(0.6))
+    colgap!(f.layout, 1, 0)
+    # good resource: https://juliadatascience.io/makie_layouts
+
     f
 end
 
