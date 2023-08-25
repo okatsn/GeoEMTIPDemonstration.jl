@@ -123,24 +123,28 @@ groupdfs = groupby(df, [:trial, :clusterId])
 dfg1 = groupdfs[15]
 
 
+lenprp = length(unique(df.prp))
+
 
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(row=:prp)
+    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probabilities around epicenter") * mapping(layout=:prp)
     probplt *= mapping(color=:eventId)
 
     eqkplt = data(dfg) * visual(Scatter, color=:red) * mapping(:evtx, :eventSize)
 
     f = Figure()
-    draw!(f[:, :], probplt; palettes=(; color=linecolors))
+    # Draw probability plot
+    draw!(f[:, :], probplt; palettes=(;
+        color=linecolors,
+        layout=[(i, 1) for i in 1:lenprp] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
+    ))
 
-
-
+    # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
-
     rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, Ref(eqkplt))
 
