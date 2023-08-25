@@ -153,3 +153,6 @@ decompressed1 = transcode(ZlibDecompressor, compressed1)
 
 
 using CodecZlib
+# References that may help:
+# https://stackoverflow.com/questions/50233579/how-to-process-a-zipfile-using-julia
+# https://discourse.julialang.org/t/reading-files-embedded-in-a-zip-file/10675/9
