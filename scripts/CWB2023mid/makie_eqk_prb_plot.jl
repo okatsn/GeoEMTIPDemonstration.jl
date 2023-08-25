@@ -138,3 +138,18 @@ for dfg in groupdfs[10:15]
         display(f)
     end
 end
+
+
+using Unzip
+using Downloads
+downloader = Downloader()
+twzip = download("https://data.moi.gov.tw/MoiOD/System/DownloadFile.aspx?DATA=72874C55-884D-4CEA-B7D6-F60B0BE85AB0")
+
+compressed1 = open(twzip, "r") do io
+    read(io)
+end
+CodecZlib.deflate!(compressed1)
+decompressed1 = transcode(ZlibDecompressor, compressed1)
+
+
+using CodecZlib
