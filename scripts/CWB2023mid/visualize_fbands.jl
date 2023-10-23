@@ -20,10 +20,10 @@ bands = lows.band
 @assert isequal(bands, highs.band)
 
 f = Figure(; resolution=(600, 200))
-ax = Axis(f[:, :], xlabel="Hz")
+ax = Axis(f[:, :], xlabel="Hz", xscale=log)
 rangebars!(ax, eachindex(bands), lows.value, highs.value; direction=:x, whiskerwidth=10)
 ax.yticks = (eachindex(bands), bands)
 ylims!(ax, extrema(eachindex(bands)) .+ [-0.5, 0.5])
 f
 
-Makie.save("FreqBands.png", f)
+Makie.save("FreqBands_log.png", f)
