@@ -195,7 +195,12 @@ function eqkprb_plot(dfg1)
             dtrangestr(extrema(dfg.eventTime)...)
         ], "; ")
     # Label(panel_map[2, 1], geotitle, tellheight=false, fontsize=15, halign=:right)
+    tkformat = v -> string.(v)
     ga = GeoAxis(panel_map[:, :];
+        yticks=21.5:0.5:25.5,
+        xticks=119.5:0.5:122.0,
+        xtickformat=tkformat,
+        ytickformat=tkformat,
         title=geotitle,
         titlesize=15,
         dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(119.4, 122.4),
@@ -223,7 +228,7 @@ end
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
-for dfg in groupdfs
+for dfg in groupdfs[1:1]
     with_theme(resolution=(1000, 700), Scatter=(marker=:star5, markersize=10, alpha=0.7, color=:red), Lines=(; alpha=1.0, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
