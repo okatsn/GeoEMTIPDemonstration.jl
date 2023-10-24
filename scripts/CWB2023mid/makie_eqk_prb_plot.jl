@@ -43,7 +43,6 @@ station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInf
 # - For continuous array, use cgrad (e.g., `cgrad(:Paired_4)`).
 # - AoG may ignore the `colormap` keyword, because AoG may supports multiple colormaps. See the [issue](https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/329).
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
-linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:1) |> reverse
 
 
 
@@ -136,7 +135,6 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 # - remove any eventTime_x
 
 groupdfs = groupby(df, [:trial, :clusterId])
-dfg1 = groupdfs[15]
 
 
 tw_counties = Downloads.download("https://github.com/g0v/twgeojson/raw/master/json/twCounty2010.geo.json")
@@ -144,7 +142,7 @@ geo = GeoJSON.read(read(tw_counties, String))
 
 lenprp = length(unique(df.prp))
 
-
+# dfg1 = groupdfs[15]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
@@ -153,19 +151,22 @@ function eqkprb_plot(dfg1)
     probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probability around epicenters") * mapping(layout=:prp)
     probplt *= mapping(color=:eventId)
 
-    eqkplt = data(dfg) * visual(Scatter) * mapping(:evtx, :eventSize)
+    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize) for g in groupby(dfg, :prp)]
 
     f = Figure()
     # Draw probability plot
+    # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
+    # linecolors = :matter
+    # in palettes: color=linecolors,
     draw!(f[:, :], probplt; palettes=(;
-        color=linecolors,
+        color=get(ColorSchemes.colorschemes[:grayC25], [0.5]),
         layout=[(i, 1) for i in 1:lenprp] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
     ))
 
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
     rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
-    draw!.(rightaxs, Ref(eqkplt))
+    draw!.(rightaxs, eqkplts)
 
     lenax = length(leftaxs)
     for (i, (axleft, axright)) in enumerate(zip(leftaxs, rightaxs))
@@ -188,7 +189,18 @@ function eqkprb_plot(dfg1)
     linkxaxes!(f)
 
     panel_map = f[:, end+1] = GridLayout()
-    ga = GeoAxis(panel_map[:, :]; dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(119.4, 122.4), latlims=(21.4, 25.8))
+
+    dtrangestr(d1, d2) = "Event Time:\n$(DateTime(d1)) - $(DateTime(d2))"
+    geotitle = join([
+            dtrangestr(extrema(dfg.eventTime)...)
+        ], "; ")
+    # Label(panel_map[2, 1], geotitle, tellheight=false, fontsize=15, halign=:right)
+    ga = GeoAxis(panel_map[:, :];
+        title=geotitle,
+        titlesize=15,
+        dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(119.4, 122.4),
+        remove_overlapping_ticks=false,
+        latlims=(21.4, 25.8))
     poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.1), shading=false)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
@@ -200,7 +212,7 @@ function eqkprb_plot(dfg1)
         align=station_location.TextAlign, fontsize=10)
 
     colsize!(f.layout, 1, Relative(0.6))
-    colgap!(f.layout, 1, 0)
+    colgap!(f.layout, 1, 0.1)
     # good resource: https://juliadatascience.io/makie_layouts
 
     f
@@ -211,9 +223,12 @@ end
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
-for dfg in groupdfs[14:15]
-    with_theme(resolution=(1000, 600), Scatter=(marker=:star5, markersize=10, alpha=0.7, color=:red), Lines=(; alpha=0.6, linewidth=0.7)) do
+for dfg in groupdfs
+    with_theme(resolution=(1000, 700), Scatter=(marker=:star5, markersize=10, alpha=0.7, color=:red), Lines=(; alpha=1.0, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
+        trial = dfg.trial |> unique |> only
+        id = dfg.clusterId |> unique |> only
+        Makie.save("temp/trial[$trial]eventid[$id].png", f)
     end
 end
