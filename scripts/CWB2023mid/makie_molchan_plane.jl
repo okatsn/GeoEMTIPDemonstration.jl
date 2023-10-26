@@ -34,9 +34,10 @@ CF23 = ColorsFigure23(P)
 tablegpbytrainyr = groupby(P.table, :train_yr)
 uniqfrc_3yr = tablegpbytrainyr[(train_yr=3,)].frc |> unique
 
-TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
-(ax0a, f0a) = figureplot(TTP3yr; resolution=(800, 600))
-Makie.save("Train_Test_Partitions_3years.png", f0a)
+# KEYNOTE: This is no longer working after updating CairoMakie
+# TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
+# (ax0a, f0a) = figureplot(TTP3yr; resolution=(800, 600))
+# Makie.save("Train_Test_Partitions_3years.png", f0a)
 
 
 
@@ -185,11 +186,12 @@ hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp => :
 
 histcomb_f3a = (hist3a) * mapping(row=:variable, col=:trial)
 # histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
-f3ap = draw!(f3a, histcomb_f3a)
+f3ap = draw!(f3a, histcomb_f3a, palettes=(; color=CF23.prp.to_color.(1:4)))
 label_DcHist!(f3a; right_label="variable", left_label="", bottom_label="probability density")
 # legend_f3!(f3a)
 f3a
 Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
+
 
 
 # KEYNOTE:
