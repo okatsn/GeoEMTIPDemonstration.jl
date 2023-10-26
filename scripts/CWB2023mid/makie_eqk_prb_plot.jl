@@ -194,10 +194,15 @@ function eqkprb_plot(dfg1)
     tkformat = v -> string.(v)
 
     twmap = data(twshp) * mapping(:geometry) * visual(
-                Choropleth)
+                Choropleth,
+                color=:white, # "white" is required to make background clean
+                linestyle=:solid,
+                strokecolor=:turquoise1,
+                strokewidth=0.5
+            )
     ga = Axis(panel_map[:, :],
         # xticks=119.5:0.5:122.0,
-        aspect=AxisAspect(1),
+        aspect=DataAspect(),
         # xtickformat=tkformat,
         # ytickformat=tkformat,
         title=geotitle,
@@ -210,12 +215,17 @@ function eqkprb_plot(dfg1)
 
     scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
     text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, fontsize=10)
+        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
 
     colsize!(f.layout, 1, Relative(0.6))
-    colgap!(f.layout, 1, 0.1)
+    colgap!(f.layout, 1, Relative(0.02))
     # good resource: https://juliadatascience.io/makie_layouts
 
+    lonavg = get_value.(dfg.eventLon) |> mean
+    latavg = get_value.(dfg.eventLat) |> mean
+    r = 0.65
+    xlims!(lonavg - r, lonavg + r)
+    ylims!(latavg - r, latavg + r)
     f
 end
 
@@ -225,7 +235,7 @@ transform!(station_location, :code => ByRow(station_location_text_shift) => :Tex
 
 
 for dfg in groupdfs[1:1]
-    with_theme(resolution=(1000, 700), Scatter=(marker=:star5, markersize=10, alpha=0.7, color=:red), Lines=(; alpha=1.0, linewidth=0.7)) do
+    with_theme(resolution=(1000, 700), Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:red), Lines=(; alpha=1.0, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
         trial = dfg.trial |> unique |> only

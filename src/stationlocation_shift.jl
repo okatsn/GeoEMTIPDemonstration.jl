@@ -42,3 +42,47 @@ stloc_shift = Dict(
 )
 
 station_location_text_shift(code) = stloc_shift[code]
+
+function textoffset(s::Symbol, f)
+    if s in [:left, :bottom]
+        return +1.0 * f
+    end
+
+    if s in [:right, :top]
+        return -1.0 * f
+    end
+
+    if s in [:baseline]
+        return +1.1 * f
+    end
+
+    if s in [:center]
+        return 0.0 * f
+    end
+    error("`$s` is unsupported.")
+end
+
+"""
+# Example: Text `offset` according to `align`
+```
+station_location = DataFrame(
+    Lon = [112.1, 112.3, 112.5],
+    Lat = [21.1, 23.3, 25.5],
+    code = ["YL", "AA", "KUOL"],
+    TextAlign = [
+        (:center, :top),
+        (:right, :bottom),
+        (:left, :bottom),
+    ]
+)
+text(station_location.Lon, station_location.Lat;
+    text=station_location.code,
+    align=station_location.TextAlign,
+    offset = textoffset.(station_location.TextAlign, 4),
+    fontsize=15
+    )
+```
+"""
+function textoffset(t::Tuple{Symbol,Symbol}, f)
+    return textoffset(t[1], f), textoffset(t[2], f)
+end
