@@ -20,6 +20,8 @@ using CategoricalArrays
 using Clustering
 using EventSpaceAlgebra
 
+targetdir(args...) = joinpath("temp/2022-2023", args...)
+mkpath(targetdir())
 
 # !!! note Map plot
 #     https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
@@ -61,6 +63,8 @@ end
 
 df = vcat(df_ge, df_gm, df_mix)
 
+
+
 # Categorize :eventId
 # - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
 # - Try the followings to figure out:
@@ -79,6 +83,10 @@ transform!(df, :eventId => CategoricalArray; renamecols=false)
 transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
+
+filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df)
+
+
 
 # Event location
 transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
@@ -242,12 +250,12 @@ end
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
-for dfg in groupdfs[1:1]
+for dfg in groupdfs
     with_theme(resolution=(1000, 700), Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:red), Lines=(; alpha=1.0, linewidth=0.7)) do
         f = eqkprb_plot(dfg)
         display(f)
         trial = dfg.trial |> unique |> only
         id = dfg.clusterId |> unique |> only
-        Makie.save("temp/trial[$trial]eventid[$id].png", f)
+        Makie.save(targetdir("trial[$trial]eventid[$id].png"), f)
     end
 end
