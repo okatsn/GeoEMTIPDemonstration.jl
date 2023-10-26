@@ -186,27 +186,37 @@ function eqkprb_plot(dfg1)
 
     panel_map = f[:, end+1] = GridLayout()
 
-    dtrangestr(d1, d2) = "Event Time:\n$(DateTime(d1)) - $(DateTime(d2))"
+    eventtrange = extrema(dfg.eventTime)
+    function dtrangestr(d1, d2)
+        if length(unique(eventtrange)) > 1
+            return "Events in:\n$(DateTime(d1)) - $(DateTime(d2))"
+        else
+            return "Event Time: $(DateTime(d1))"
+        end
+    end
+
     geotitle = join([
-            dtrangestr(extrema(dfg.eventTime)...)
+            dtrangestr(eventtrange...)
         ], "; ")
     # Label(panel_map[2, 1], geotitle, tellheight=false, fontsize=15, halign=:right)
-    tkformat = v -> string.(v)
+    tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
 
     twmap = data(twshp) * mapping(:geometry) * visual(
                 Choropleth,
                 color=:white, # "white" is required to make background clean
                 linestyle=:solid,
-                strokecolor=:turquoise1,
-                strokewidth=0.5
+                strokecolor=:turquoise2,
+                strokewidth=0.75
             )
     ga = Axis(panel_map[:, :],
         # xticks=119.5:0.5:122.0,
         aspect=DataAspect(),
-        # xtickformat=tkformat,
-        # ytickformat=tkformat,
+        xtickformat=tkformat,
+        ytickformat=tkformat,
         title=geotitle,
-        titlesize=15)
+        titlesize=15,
+        xlabel="Longitude",
+        ylabel="Latitude")
     draw!(ga, twmap)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
@@ -221,11 +231,9 @@ function eqkprb_plot(dfg1)
     colgap!(f.layout, 1, Relative(0.02))
     # good resource: https://juliadatascience.io/makie_layouts
 
-    lonavg = get_value.(dfg.eventLon) |> mean
-    latavg = get_value.(dfg.eventLat) |> mean
     r = 0.65
-    xlims!(lonavg - r, lonavg + r)
-    ylims!(latavg - r, latavg + r)
+    xlims!(extrema(get_value.(dfg.eventLon)) .+ (-r, +r)...)
+    ylims!(extrema(get_value.(dfg.eventLat)) .+ (-r, +r)...)
     f
 end
 
