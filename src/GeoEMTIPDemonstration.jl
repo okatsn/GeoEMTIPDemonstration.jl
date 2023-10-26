@@ -48,5 +48,6 @@ export figureplot
 
 include("stationlocation_shift.jl")
 export station_location_text_shift
+export textoffset
 
 end
