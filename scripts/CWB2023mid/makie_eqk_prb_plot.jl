@@ -1,8 +1,9 @@
 using DataFrames, CSV
-using CairoMakie, AlgebraOfGraphics
+using AlgebraOfGraphics
+# using CairoMakie
+using WGLMakie
 using ColorSchemes
 using Chain
-using GeoMakie
 using Statistics
 using LaTeXStrings
 using Printf
@@ -13,29 +14,28 @@ using GeoEMTIPDemonstration
 using OkMakieToolkits
 using Dates
 using OkFiles
+using Shapefile
 using CategoricalArrays
 # clustering
 using Clustering
 using EventSpaceAlgebra
 
-# Map plot
-# https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
-# OpenStreetMapXPlot.jl with Makie: https://github.com/JuliaDynamics/Agents.jl/issues/437
-# common geographics datasets such as location of shoreline, rivers and political boundaries https://juliageo.org/GeoDatasets.jl/dev/
+
+# !!! note Map plot
+#     https://quicademy.com/2023/07/17/the-5-best-geospatial-packages-to-use-in-julia/
+#     OpenStreetMapXPlot.jl with Makie: https://github.com/JuliaDynamics/Agents.jl/issues/437
+#     common geographics datasets such as location of shoreline, rivers and political boundaries https://juliageo.org/GeoDatasets.jl/dev/
+#     Using AoG: https://statsforscaredecologists.netlify.app/posts/001_basic_map_julia/
+#     using VegaLite: https://www.youtube.com/watch?v=mptWWrScdS4
 
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
-
-using WGLMakie, GeoMakie
-using GeoMakie.GeoJSON
-using Downloads
-using GeometryBasics
-using GeoInterface
 
 # SETME
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
+twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
 # palletes for `draw` of AlgebraOfGraphic (AoG)
 # KEYNOTE:
@@ -136,10 +136,6 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 groupdfs = groupby(df, [:trial, :clusterId])
 
-
-tw_counties = Downloads.download("https://github.com/g0v/twgeojson/raw/master/json/twCounty2010.geo.json")
-geo = GeoJSON.read(read(tw_counties, String))
-
 lenprp = length(unique(df.prp))
 
 # dfg1 = groupdfs[15]
@@ -196,17 +192,17 @@ function eqkprb_plot(dfg1)
         ], "; ")
     # Label(panel_map[2, 1], geotitle, tellheight=false, fontsize=15, halign=:right)
     tkformat = v -> string.(v)
-    ga = GeoAxis(panel_map[:, :];
-        yticks=21.5:0.5:25.5,
-        xticks=119.5:0.5:122.0,
-        xtickformat=tkformat,
-        ytickformat=tkformat,
+
+    twmap = data(twshp) * mapping(:geometry) * visual(
+                Choropleth)
+    ga = Axis(panel_map[:, :],
+        # xticks=119.5:0.5:122.0,
+        aspect=AxisAspect(1),
+        # xtickformat=tkformat,
+        # ytickformat=tkformat,
         title=geotitle,
-        titlesize=15,
-        dest="+proj=ortho +lon_0=120.1 +lat_0=23.9", lonlims=(119.4, 122.4),
-        remove_overlapping_ticks=false,
-        latlims=(21.4, 25.8))
-    poly!(ga, geo; strokecolor=:blue, strokewidth=1, color=(:blue, 0.1), shading=false)
+        titlesize=15)
+    draw!(ga, twmap)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
