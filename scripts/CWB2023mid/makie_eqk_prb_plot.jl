@@ -1,6 +1,6 @@
 using DataFrames, CSV
 using AlgebraOfGraphics
-import CairoMakie
+# import CairoMakie
 using WGLMakie
 using ColorSchemes
 using Chain
@@ -178,7 +178,7 @@ function eqkprb_plot(dfg1)
     # in palettes: color=linecolors,
     pprob = draw!(f[:, :], probplt;
         palettes=(;
-            color=CairoMakie.categorical_colors(:Set1_4, 4),
+            color=WGLMakie.categorical_colors(:Set1_4, 4),
             layout=[(i, 1) for i in 1:lenlayout] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
         )
     )
@@ -271,7 +271,7 @@ end
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
-for dfg in groupdfs[5:5]
+for dfg in groupdfs
     with_theme(resolution=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.5), # Band=(; alpha=0.15) it is useless to assign it here.
