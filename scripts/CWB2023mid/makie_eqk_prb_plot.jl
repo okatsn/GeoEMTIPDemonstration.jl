@@ -1,6 +1,6 @@
 using DataFrames, CSV
 using AlgebraOfGraphics
-# using CairoMakie
+import CairoMakie
 using WGLMakie
 using ColorSchemes
 using Chain
@@ -142,31 +142,51 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 # CHECKPOINT:
 # - remove any eventTime_x
 
-groupdfs = groupby(df, [:trial, :clusterId])
-
-lenprp = length(unique(df.prp))
-
-# dfg1 = groupdfs[15]
+groupdfs = groupby(df, [:clusterId])
+problayout = :trial
+# dfg1 = groupdfs[5]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
-    probplt = data(dfg) * visual(Lines) * mapping(:x => identity => "date", :probabilityMean => identity => "probability around epicenters") * mapping(layout=:prp)
-    probplt *= mapping(color=:eventId)
+    lenlayout = length(unique(dfg[!, problayout]))
 
-    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize) for g in groupby(dfg, :prp)]
+
+    dfgc = combine(groupby(dfg, [:prp, :trial, :x]),
+        :x => unique,
+        :probabilityMean => mean => :y,
+        :probabilityMean => maximum => :y_up,
+        :probabilityMean => minimum => :y_lo,
+        :trial => unique,
+        :prp => unique;
+        renamecols=false
+    )
+    visline = visual(Lines) * mapping(:x => identity => "date", :y => identity => "P")
+    visband = visual(Band; alpha=0.15) * mapping(:x, :y_lo, :y_up)
+    probplt = data(dfgc) * (visband + visline) * mapping(layout=problayout) * mapping(color=:prp)
+
+
+
+    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize) for g in groupby(dfg, problayout)]
+
 
     f = Figure()
     # Draw probability plot
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
     # linecolors = :matter
     # in palettes: color=linecolors,
-    draw!(f[:, :], probplt; palettes=(;
-        color=get(ColorSchemes.colorschemes[:grayC25], [0.5]),
-        layout=[(i, 1) for i in 1:lenprp] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
-    ))
+    pprob = draw!(f[:, :], probplt;
+        palettes=(;
+            color=CairoMakie.categorical_colors(:Set1_4, 4),
+            layout=[(i, 1) for i in 1:lenlayout] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
+        )
+    )
 
+    Label(f[:, 0], "probability around epicenters", tellheight=false, rotation=0.5π)
+    legend!(f[end+1, :], pprob; tellwidth=false, tellheight=true, titleposition=:left, orientation=:horizontal)
+
+    # palettes=(; color=CF23.prp.to_color.(1:4))
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
     rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
@@ -242,6 +262,7 @@ function eqkprb_plot(dfg1)
     r = 0.65
     xlims!(extrema(get_value.(dfg.eventLon)) .+ (-r, +r)...)
     ylims!(extrema(get_value.(dfg.eventLat)) .+ (-r, +r)...)
+
     f
 end
 
@@ -250,12 +271,15 @@ end
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
-for dfg in groupdfs
-    with_theme(resolution=(1000, 700), Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:red), Lines=(; alpha=1.0, linewidth=0.7)) do
+for dfg in groupdfs[5:5]
+    with_theme(resolution=(1000, 700),
+        Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
+        Lines=(; alpha=1.0, linewidth=1.5), # Band=(; alpha=0.15) it is useless to assign it here.
+    ) do
+
         f = eqkprb_plot(dfg)
         display(f)
-        trial = dfg.trial |> unique |> only
         id = dfg.clusterId |> unique |> only
-        Makie.save(targetdir("trial[$trial]eventid[$id].png"), f)
+        Makie.save(targetdir("Eventid[$id].png"), f)
     end
 end
