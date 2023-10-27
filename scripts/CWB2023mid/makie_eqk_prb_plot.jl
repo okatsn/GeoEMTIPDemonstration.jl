@@ -274,12 +274,13 @@ transform!(station_location, :code => ByRow(station_location_text_shift) => :Tex
 for dfg in groupdfs
     with_theme(resolution=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
-        Lines=(; alpha=1.0, linewidth=1.5), # Band=(; alpha=0.15) it is useless to assign it here.
+        Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
     ) do
 
         f = eqkprb_plot(dfg)
         display(f)
         id = dfg.clusterId |> unique |> only
-        Makie.save(targetdir("Eventid[$id].png"), f)
+        (dt0, dt1) = DateTime.(extrema(dfg.eventTime)) .|> (d -> floor(d, Day)) .|> Date .|> string
+        Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
     end
 end
