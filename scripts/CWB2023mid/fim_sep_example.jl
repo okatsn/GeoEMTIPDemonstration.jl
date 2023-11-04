@@ -1,4 +1,11 @@
 using CSV, DataFrames
+using Dates
+using CairoMakie, AlgebraOfGraphics
+using SWCForecastBase
+using Statistics
+iszero(v) = v == 0.0
+nanmean(x) = mean(filter(!isnan, x))
+
 df = CSV.read("LargeFiles/delete_after_2025/fimsep_example.csv", DataFrame; header=
 [
     :year, :month, :day, :hour, :minute, :second,
@@ -15,3 +22,29 @@ df = CSV.read("LargeFiles/delete_after_2025/fimsep_example.csv", DataFrame; head
     :SE_1day_NS,
     :SE_1day_EW,
 ])
+
+transform!(df,
+    :second => ByRow(t -> round(rem(t, 1) * 1000)) => :millisecond,
+    :second => ByRow(floor) => :second
+)
+transform!(df, [:year, :month, :day, :hour, :minute, :second, :millisecond] => ByRow(DateTime) => :time)
+transform!(df, :time => ByRow(t -> floor(t, Minute(1))) => :time)
+
+# df = ifelse.(iszero.(df), NaN, df)
+
+df = combine(groupby(df, :time), :time => unique, Not(:time) .=> nanmean; renamecols=false)
+
+
+
+
+df2 = stack(df, Cols(r"^FIM", r"^SE"), :time)
+transform!(df2, :variable => ByRow(str -> begin
+    e = split(str, "_")
+    (metric=e[1], window=e[2], component=e[3])
+end) => AsTable)
+
+# dropmissing!(df2)
+
+with_theme(resolution=(1000, 550)) do
+    data(df2) * visual(Lines) * mapping(:time, :value) * mapping(col=:component, row=:metric) * mapping(color=:window) |> p -> draw(p; facet=(; linkyaxes=:rowwise), axis=(; xticklabelrotation=0.2π))
+end
