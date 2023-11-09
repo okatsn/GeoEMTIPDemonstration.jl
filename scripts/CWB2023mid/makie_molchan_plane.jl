@@ -170,6 +170,7 @@ Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 f3a = Figure(; resolution=(1000, 700))
 raincloudkwargs = (plot_boxplots=true, orientation=:vertical,
     cloud_width=0.85,
+    clouds=hist,
     markersize=1, jitter_width=0.02, # scatter plot settings
     boxplot_width=0.12, # boxplot settings
     gap=0, # gap between prp
@@ -225,7 +226,7 @@ xymap = mapping(
     :MissingRateForecasting => identity => "missing rate",
 )
 
-visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8)
+visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8, labels=false)
 visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
 
 
