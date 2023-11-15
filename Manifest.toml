@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "837574918c61e1c5c080dcc6826e24cad44daec6"
+project_hash = "c6410d4847a8ae481a00cd35375a0ec418b2e292"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -1322,6 +1322,11 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 git-tree-sha1 = "61be59e4daffff43a8cec04b5e0dc773cbb5db3a"
 uuid = "7475f97c-0381-53b1-977b-4c60186c8d62"
 version = "1.3.3"
+
+[[deps.MolchanCB]]
+git-tree-sha1 = "f7d295d9993c6c006e712727577a76d40ca24630"
+uuid = "70383841-2333-46ca-adf2-3d6ff66a2e6b"
+version = "0.1.0"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]

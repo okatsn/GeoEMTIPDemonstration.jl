@@ -10,6 +10,7 @@ using OkMakieToolkits
 using OkDataFrameTools
 using CWBProjectSummaryDatasets
 using GeoEMTIPDemonstration
+using MolchanCB
 using Dates
 df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
 df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GE_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GE", :train_yr => 3)
@@ -19,6 +20,12 @@ df = vcat(
     df_mx3, df_ge3, df_gm3)
 # `dropnanmissing!` is required to avoid contour plot error
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
+
+transform!(df,
+    :NEQ_min => ByRow(n -> molchancb(big(n), 0.1)) => :Dc_high,
+    :NEQ_max => ByRow(n -> molchancb(big(n), 0.1)) => :Dc_low
+) # CHECKPOINT: It is super slow (due to large N involved in factorial calculations). You should create a dictionary for NEQ-Dc reference.
+
 dropnanmissing!(df)
 
 
