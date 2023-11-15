@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "9d0a460803adcba25d32c471982a977e8afa011d"
+project_hash = "837574918c61e1c5c080dcc6826e24cad44daec6"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -152,9 +152,9 @@ version = "0.10.11"
 
 [[deps.CWBProjectSummaryDatasets]]
 deps = ["SmallDatasetMaker", "Test"]
-git-tree-sha1 = "88e3739e6fd4275511f7ea8bb1048f553131bf26"
+path = "/home/jovyan/.julia/dev/CWBProjectSummaryDatasets"
 uuid = "b38d3104-45cc-42ed-bfee-2aefedd5b40b"
-version = "0.4.0"
+version = "0.6.0"
 
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
