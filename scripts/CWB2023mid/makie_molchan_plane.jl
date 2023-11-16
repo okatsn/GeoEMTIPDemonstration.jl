@@ -63,7 +63,7 @@ islinf(x) = false
 
 df = ifelse.(islinf.(df), NaN, df)
 
-dropnanmissing!(df)
+dropnanmissing!(df, Not(r"NEQ"))
 
 
 P = prep202304!(df)

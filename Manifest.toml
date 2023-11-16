@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "c6410d4847a8ae481a00cd35375a0ec418b2e292"
+project_hash = "9b8a85206e192e8cbdff8e81cff89d7c6159ba54"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -1324,9 +1324,9 @@ uuid = "7475f97c-0381-53b1-977b-4c60186c8d62"
 version = "1.3.3"
 
 [[deps.MolchanCB]]
-git-tree-sha1 = "f7d295d9993c6c006e712727577a76d40ca24630"
+git-tree-sha1 = "7385dfe2c05caf09ee56cb09d9dc2d7941ed4b7a"
 uuid = "70383841-2333-46ca-adf2-3d6ff66a2e6b"
-version = "0.1.0"
+version = "0.1.1"
 
 [[deps.MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1402,9 +1402,9 @@ version = "1.3.5+1"
 
 [[deps.OkDataFrameTools]]
 deps = ["DataFrames"]
-git-tree-sha1 = "93adbeadb122670286a164cd0705de33de9fcae8"
+git-tree-sha1 = "9ecf1175b2a6ca6d4ad99d32669e8799a2602df5"
 uuid = "44fb8f6e-77e3-42fb-a351-fd44f2ba0634"
-version = "0.1.2"
+version = "0.2.0"
 
 [[deps.OkFiles]]
 deps = ["Printf"]
