@@ -1,3 +1,4 @@
+using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
 using Statistics
@@ -38,8 +39,12 @@ getalms(α, neq) = DCB[α][neq]
 uniqueonly(x) = x |> unique |> only
 
 function getdcb(α, neq)
-    (alarmed, missed) = getalms(α, neq) # fitting degree
-    fdcb = 1 .- alarmed .- missed
+    (alarmed, missed) = try
+        (alarmed, missed) = getalms(α, neq) # fitting degree
+    catch
+        (alarmed, missed) = molchancb(neq, α)
+    end
+    fdcb = 1.0 .- alarmed .- missed
 end
 
 whichalpha = 0.32
@@ -154,16 +159,40 @@ Legend(pl_legend[2, 1],
 f1
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
-f2 = Figure(; resolution=(800, 550))
+
+# # Overall fitting degrees
+
 dfcb2 = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
-dropnanmissing!(dfcb2)
-content2 = data(dfcb2) *
-           (
-               visual(BarPlot) *
-               mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
-           ) *
-           mapping(col=:trial)
-draw!(f2, content2; axis=(xticklabelrotation=0.2π,))
+
+dfcb2a = @chain df begin
+    groupby([:prp, :trial, :frc_ind])
+    combine(:NEQ_min => uniqueonly, :NEQ_max => uniqueonly; renamecols=false)
+    groupby([:prp, :trial])
+    combine(:NEQ_min => sum, :NEQ_max => sum; renamecols=false)
+    outerjoin(dfcb2; on=[:trial, :prp])
+    transform(
+        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_low,
+        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_high
+    )
+end
+
+
+
+dropnanmissing!(dfcb2a)
+
+
+f2 = Figure(; resolution=(800, 550))
+
+dcbars = (
+    visual(BarPlot) *
+    mapping(:prp, :FittingDegreeMOT => ylabel2)
+)
+
+cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+dclevels = cusvis(:springgreen1) * mapping(:prp, :DCB_low) + cusvis(:springgreen3) * mapping(:prp, :DCB_high)
+
+draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
 label_DcHist!(f2; left_label="fitting degree", right_label="", bottom_label="")
 f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
