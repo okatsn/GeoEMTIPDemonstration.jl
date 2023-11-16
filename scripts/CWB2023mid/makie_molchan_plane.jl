@@ -30,6 +30,12 @@ DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for 
 
 getalms(α, neq) = DCB[α][neq]
 
+
+
+
+# TODO: consider move these functions out
+uniqueonly(x) = x |> unique |> only
+
 function getdcb(α, neq)
     (alarmed, missed) = getalms(α, neq) # fitting degree
     fdcb = 1 .- alarmed .- missed
@@ -38,7 +44,15 @@ end
 transform!(df,
     :NEQ_min => ByRow(n -> maximum(getdcb(0.1, n); init=-Inf)) => :DCB_high,
     :NEQ_max => ByRow(n -> maximum(getdcb(0.1, n); init=-Inf)) => :DCB_low,
+    # init = -Inf is required since the result of getdcb (from molchancb) might be an empty vector.
 ) # KEYNOTE: It will be super slow (due to large N involved in factorial calculations) if directly uses NEQ_max => ByRow(molchancb).
+
+# # Convert -Inf to NaN
+# Is literal infinite
+islinf(x::AbstractFloat) = isinf(x)
+islinf(x) = false
+
+df = ifelse.(islinf.(df), NaN, df)
 
 dropnanmissing!(df)
 
@@ -68,8 +82,11 @@ repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
 
-dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
 dropnanmissing!(dfcb)
+
+insertcols!(dfcb, :DCB_top => 1.0)
+insertcols!(dfcb, :DCB_bottom => -1.0)
 
 function label_DcHist!(f2;
     left_label="number of models",
@@ -91,16 +108,20 @@ pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[1, 2] = GridLayout()
 
 colsize!(f1.layout, 1, Relative(3 / 4))
-rainbowbars = data(dfcb) * # data
-              visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.7) *
+rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.5) *
               mapping(color=:frc_ind) *
               mapping(:frc_ind,
                   :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
 dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
 hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
-plt = (rainbowbars + hlineofmean) * mapping(col=:trial, row=:prp)
-draw!(pl_plots, plt; axis=(xticklabelrotation=0.2π,))
+
+clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
+clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
+
+
+plt = (data(dfcb) * (clevel + rainbowbars + clevel2) + hlineofmean) * mapping(col=:trial, row=:prp)
+draw!(pl_plots, plt; axis=(; xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
 
 Legend(pl_legend[:, :],
