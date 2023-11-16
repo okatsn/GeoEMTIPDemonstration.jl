@@ -147,7 +147,7 @@ Legend(pl_legend[2, 1],
             points=Point2f[(0, 0), (1, 0), (1, 1), (0.66, 0.6), (0.33, 0.8), (0.0, 0.7)])
     ]
     ],
-    ["$(Int(round((1-whichalpha) * 100)))% confidence boundary for fitting degree "];
+    ["≤$(Int(round((1-whichalpha) * 100)))% confidence boundary for fitting degree "];
     labelsize=15,
     valign=:bottom, tellheight=true
 )
