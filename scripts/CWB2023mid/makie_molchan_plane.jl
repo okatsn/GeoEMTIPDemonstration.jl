@@ -48,6 +48,7 @@ function getdcb(α, neq)
 end
 
 whichalpha = 0.32
+fdperc = "$(Int(round((1-whichalpha) * 100)))%"
 
 transform!(df,
     :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_high,
@@ -155,7 +156,7 @@ Legend(pl_legend[2, 1],
             points=Point2f[(0, 0), (1, 0), (1, 1), (0.66, 0.6), (0.33, 0.8), (0.0, 0.7)])
     ]
     ],
-    ["≤$(Int(round((1-whichalpha) * 100)))% confidence boundary for fitting degree "];
+    ["≤ $fdperc confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
     labelsize=15,
     valign=:bottom, tellheight=true
 )
@@ -197,6 +198,17 @@ let
     dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
 
     draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    Legend(f2[2, :],
+        [
+            [
+            LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.1), (1, 0.1)]),
+            LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.9), (1, 0.9)]),
+            MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.1), (0.5, 0.9)])]
+        ],
+        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
+        labelsize=15,
+        valign=:bottom, tellheight=true
+    )
 end
 label_DcHist!(f2; left_label="fitting degree", right_label="", bottom_label="")
 f2
