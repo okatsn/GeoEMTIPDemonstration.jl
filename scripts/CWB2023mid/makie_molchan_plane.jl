@@ -116,20 +116,23 @@ pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[2, 1] = GridLayout()
 
 # colsize!(f1.layout, 1, Relative(3 / 4))
-rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
-              mapping(color=:frc_ind) *
-              mapping(:frc_ind,
-                  :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
-dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
-hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
+let
+    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
+                  mapping(color=:frc_ind) *
+                  mapping(:frc_ind,
+                      :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
+    dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
+    hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
 
-clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
-clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
+    clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
+    clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
 
 
-plt = (data(dfcb) * (clevel1 + rainbowbars + clevel2)) * mapping(col=:trial, row=:prp)
-draw!(pl_plots, plt; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
+    plt = (data(dfcb) * (clevel1 + rainbowbars + clevel2)) * mapping(col=:trial, row=:prp)
+    draw!(pl_plots, plt; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
+end
+
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
 
 Legend(pl_legend[1, 1],
@@ -182,17 +185,19 @@ dropnanmissing!(dfcb2a)
 
 
 f2 = Figure(; resolution=(800, 550))
+let
+    x = :prp => repus => xlabel2
+    dcbars = (
+        visual(BarPlot) *
+        mapping(x, :FittingDegreeMOT => ylabel2)
+    )
 
-dcbars = (
-    visual(BarPlot) *
-    mapping(:prp, :FittingDegreeMOT => ylabel2)
-)
+    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
-cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+    dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
 
-dclevels = cusvis(:springgreen1) * mapping(:prp, :DCB_low) + cusvis(:springgreen3) * mapping(:prp, :DCB_high)
-
-draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+end
 label_DcHist!(f2; left_label="fitting degree", right_label="", bottom_label="")
 f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
