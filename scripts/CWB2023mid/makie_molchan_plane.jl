@@ -21,10 +21,24 @@ df = vcat(
 # `dropnanmissing!` is required to avoid contour plot error
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
 
+
+uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
+
+# # A dictionary function for efficiently obtain Molchan confidence boundary.
+
+DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.33]])
+
+getalms(α, neq) = DCB[α][neq]
+
+function getdcb(α, neq)
+    (alarmed, missed) = getalms(α, neq) # fitting degree
+    fdcb = 1 .- alarmed .- missed
+end
+
 transform!(df,
-    :NEQ_min => ByRow(n -> molchancb(big(n), 0.1)) => :Dc_high,
-    :NEQ_max => ByRow(n -> molchancb(big(n), 0.1)) => :Dc_low
-) # CHECKPOINT: It is super slow (due to large N involved in factorial calculations). You should create a dictionary for NEQ-Dc reference.
+    :NEQ_min => ByRow(n -> maximum(getdcb(0.1, n); init=-Inf)) => :DCB_high,
+    :NEQ_max => ByRow(n -> maximum(getdcb(0.1, n); init=-Inf)) => :DCB_low,
+) # KEYNOTE: It will be super slow (due to large N involved in factorial calculations) if directly uses NEQ_max => ByRow(molchancb).
 
 dropnanmissing!(df)
 
