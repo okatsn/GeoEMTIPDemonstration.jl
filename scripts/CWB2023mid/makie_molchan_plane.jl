@@ -26,7 +26,8 @@ uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
 
 # # A dictionary function for efficiently obtain Molchan confidence boundary.
 
-DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.33]])
+
+DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.32]])
 
 getalms(α, neq) = DCB[α][neq]
 
@@ -41,9 +42,11 @@ function getdcb(α, neq)
     fdcb = 1 .- alarmed .- missed
 end
 
+whichalpha = 0.32
+
 transform!(df,
-    :NEQ_min => ByRow(n -> maximum(getdcb(0.1, n); init=-Inf)) => :DCB_high,
-    :NEQ_max => ByRow(n -> maximum(getdcb(0.1, n); init=-Inf)) => :DCB_low,
+    :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_high,
+    :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_low,
     # init = -Inf is required since the result of getdcb (from molchancb) might be an empty vector.
 ) # KEYNOTE: It will be super slow (due to large N involved in factorial calculations) if directly uses NEQ_max => ByRow(molchancb).
 
@@ -105,10 +108,10 @@ dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
 f1 = Figure(; resolution=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
-pl_legend = f1[1, 2] = GridLayout()
+pl_legend = f1[2, 1] = GridLayout()
 
-colsize!(f1.layout, 1, Relative(3 / 4))
-rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.5) *
+# colsize!(f1.layout, 1, Relative(3 / 4))
+rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
               mapping(color=:frc_ind) *
               mapping(:frc_ind,
                   :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
@@ -120,19 +123,32 @@ clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_botto
 clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
 
 
-plt = (data(dfcb) * (clevel + rainbowbars + clevel2) + hlineofmean) * mapping(col=:trial, row=:prp)
-draw!(pl_plots, plt; axis=(; xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
+plt = (data(dfcb) * (clevel1 + rainbowbars + clevel2)) * mapping(col=:trial, row=:prp)
+draw!(pl_plots, plt; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
 
-Legend(pl_legend[:, :],
+Legend(pl_legend[1, 1],
     [PolyElement(polycolor=color) for color in CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
-    labelsize=14,
-    tellheight=false, tellwidth=true, halign=:left, valign=:top)
-Legend(pl_legend[0, end],
-    [[LineElement(; dcmeanstyle...)]],
-    ["overall average"];
+    labelsize=12,
+    tellheight=true, tellwidth=true, halign=:left, valign=:top, orientation=:horizontal, nbanks=4)
+# Legend(pl_legend[1, 1],
+#     [[LineElement(; dcmeanstyle...)]],
+#     ["overall average"];
+#     labelsize=12,
+#     valign=:bottom, tellheight=true
+# )
+Legend(pl_legend[2, 1],
+    [
+        [
+        PolyElement(color=:gray69, strokecolor=:black, strokewidth=0.5,
+            alpha=0.5,
+            points=Point2f[(0, 0), (1, 0), (1, 1), (0.66, 0.6), (0.33, 0.8), (0.0, 0.7)])
+    ]
+    ],
+    ["$(Int(round((1-whichalpha) * 100)))% confidence boundary for fitting degree "];
+    labelsize=15,
     valign=:bottom, tellheight=true
 )
 f1
