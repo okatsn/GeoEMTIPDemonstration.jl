@@ -9,6 +9,8 @@ export Preprocessed, InformationForFigure, ColormapRef
 
 using Dates
 include("to_days.jl")
+include("dtstr2nday.jl")
+export dtstr2nday
 
 using DrWatson
 include("projectdir.jl")

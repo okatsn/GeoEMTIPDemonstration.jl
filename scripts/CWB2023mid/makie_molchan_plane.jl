@@ -152,18 +152,13 @@ Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 
 # # Overall fitting degrees
-# dtstr = "20150402-20150928"
-function nday(dtstr)
-    dfmt = dateformat"yyyymmdd"
-    nday = Date.(split(dtstr, "-"), Ref(dfmt)) |> diff |> only |> v -> getfield(v, :value)
-    nday += 1
-end
+
 
 df2 = @chain df begin
     groupby([:frc, :prp, :trial])
     combine(Cols(r"NEQ") .=> uniqueonly, :AlarmedRateForecasting => mean; renamecols=false)
     # CHECKPOINT: combine hittedRate, calculate hittedEQK_min and _max accordingly.
-    transform([:frc, :AlarmedRateForecasting] => ByRow((t, τ) -> nday(t) * τ) => :alarmed_area)
+    transform([:frc, :AlarmedRateForecasting] => ByRow((t, τ) -> dtstr2nday(t) * τ) => :alarmed_area)
     transform(:frc => ByRow(nday) => :total_area)
 
 end
