@@ -1,3 +1,4 @@
+using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
 using Statistics
@@ -10,6 +11,7 @@ using OkMakieToolkits
 using OkDataFrameTools
 using CWBProjectSummaryDatasets
 using GeoEMTIPDemonstration
+using MolchanCB
 using Dates
 df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
 df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GE_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GE", :train_yr => 3)
@@ -19,7 +21,49 @@ df = vcat(
     df_mx3, df_ge3, df_gm3)
 # `dropnanmissing!` is required to avoid contour plot error
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
-dropnanmissing!(df)
+
+
+uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
+
+# # A dictionary function for efficiently obtain Molchan confidence boundary.
+
+
+DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.32]])
+
+getalms(α, neq) = DCB[α][neq]
+
+
+
+
+# TODO: consider move these functions out
+uniqueonly(x) = x |> unique |> only
+
+function getdcb(α, neq)
+    (alarmed, missed) = try
+        (alarmed, missed) = getalms(α, neq) # fitting degree
+    catch
+        (alarmed, missed) = molchancb(neq, α)
+    end
+    fdcb = 1.0 .- alarmed .- missed
+end
+
+whichalpha = 0.32
+fdperc = "$(Int(round((1-whichalpha) * 100)))%"
+
+transform!(df,
+    :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_high,
+    :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_low,
+    # init = -Inf is required since the result of getdcb (from molchancb) might be an empty vector.
+) # KEYNOTE: It will be super slow (due to large N involved in factorial calculations) if directly uses NEQ_max => ByRow(molchancb).
+
+# # Convert -Inf to NaN
+# Is literal infinite
+islinf(x::AbstractFloat) = isinf(x)
+islinf(x) = false
+
+df = ifelse.(islinf.(df), NaN, df)
+
+dropnanmissing!(df, Not(r"NEQ"))
 
 
 P = prep202304!(df)
@@ -47,8 +91,11 @@ repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
 
-dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, nrow)
+dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
 dropnanmissing!(dfcb)
+
+insertcols!(dfcb, :DCB_top => 1.0)
+insertcols!(dfcb, :DCB_bottom => -1.0)
 
 function label_DcHist!(f2;
     left_label="number of models",
@@ -67,45 +114,102 @@ dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
 f1 = Figure(; resolution=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
-pl_legend = f1[1, 2] = GridLayout()
+pl_legend = f1[2, 1] = GridLayout()
 
-colsize!(f1.layout, 1, Relative(3 / 4))
-rainbowbars = data(dfcb) * # data
-              visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.7) *
-              mapping(color=:frc_ind) *
-              mapping(:frc_ind,
-                  :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
-dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
-hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
+# colsize!(f1.layout, 1, Relative(3 / 4))
+let
+    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
+                  mapping(color=:frc_ind) *
+                  mapping(:frc_ind,
+                      :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
+    dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
+    hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
-plt = (rainbowbars + hlineofmean) * mapping(col=:trial, row=:prp)
-draw!(pl_plots, plt; axis=(xticklabelrotation=0.2π,))
+
+    clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
+    clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
+
+
+    plt = (data(dfcb) * (clevel1 + rainbowbars + clevel2)) * mapping(col=:trial, row=:prp)
+    draw!(pl_plots, plt; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
+end
+
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
 
-Legend(pl_legend[:, :],
+Legend(pl_legend[1, 1],
     [PolyElement(polycolor=color) for color in CF23.frc.colormap],
     P.uniqfrc,
     "Forecasting phase",
-    labelsize=14,
-    tellheight=false, tellwidth=true, halign=:left, valign=:top)
-Legend(pl_legend[0, end],
-    [[LineElement(; dcmeanstyle...)]],
-    ["overall average"];
+    labelsize=12,
+    tellheight=true, tellwidth=true, halign=:left, valign=:top, orientation=:horizontal, nbanks=4)
+# Legend(pl_legend[1, 1],
+#     [[LineElement(; dcmeanstyle...)]],
+#     ["overall average"];
+#     labelsize=12,
+#     valign=:bottom, tellheight=true
+# )
+Legend(pl_legend[2, 1],
+    [
+        [
+        PolyElement(color=:gray69, strokecolor=:black, strokewidth=0.5,
+            alpha=0.5,
+            points=Point2f[(0, 0), (1, 0), (1, 1), (0.66, 0.6), (0.33, 0.8), (0.0, 0.7)])
+    ]
+    ],
+    ["≤ $fdperc confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
+    labelsize=15,
     valign=:bottom, tellheight=true
 )
 f1
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
-f2 = Figure(; resolution=(800, 550))
+
+# # Overall fitting degrees
+
 dfcb2 = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
-dropnanmissing!(dfcb2)
-content2 = data(dfcb2) *
-           (
-               visual(BarPlot) *
-               mapping(:prp => repus => xlabel2, :FittingDegreeMOT => ylabel2)
-           ) *
-           mapping(col=:trial)
-draw!(f2, content2; axis=(xticklabelrotation=0.2π,))
+
+dfcb2a = @chain df begin
+    groupby([:prp, :trial, :frc_ind])
+    combine(:NEQ_min => uniqueonly, :NEQ_max => uniqueonly; renamecols=false)
+    groupby([:prp, :trial])
+    combine(:NEQ_min => sum, :NEQ_max => sum; renamecols=false)
+    outerjoin(dfcb2; on=[:trial, :prp])
+    transform(
+        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_low,
+        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_high
+    )
+end
+
+
+
+dropnanmissing!(dfcb2a)
+
+
+f2 = Figure(; resolution=(800, 550))
+let
+    x = :prp => repus => xlabel2
+    dcbars = (
+        visual(BarPlot) *
+        mapping(x, :FittingDegreeMOT => ylabel2)
+    )
+
+    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+    dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
+
+    draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    Legend(f2[2, :],
+        [
+            [
+            LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.1), (1, 0.1)]),
+            LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.9), (1, 0.9)]),
+            MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.1), (0.5, 0.9)])]
+        ],
+        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
+        labelsize=15,
+        valign=:bottom, tellheight=true
+    )
+end
 label_DcHist!(f2; left_label="fitting degree", right_label="", bottom_label="")
 f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
