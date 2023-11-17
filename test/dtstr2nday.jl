@@ -1,4 +1,5 @@
 @testset "dtstr2nday.jl" begin
+    using Dates
     yyyy = rand(1900:2030, 10)
     mm = rand(1:12, 10)
     dd = rand(1:28, 10)
