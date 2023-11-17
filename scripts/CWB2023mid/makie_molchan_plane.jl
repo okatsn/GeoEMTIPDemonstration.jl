@@ -13,6 +13,7 @@ using CWBProjectSummaryDatasets
 using GeoEMTIPDemonstration
 using MolchanCB
 using Dates
+
 df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
 df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GE_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GE", :train_yr => 3)
 df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GM_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GM", :train_yr => 3)
@@ -23,19 +24,19 @@ df = vcat(
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
 
 
-uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
+# SETME: Parameter settings:
+whichalpha = 0.32
 
 # # A dictionary function for efficiently obtain Molchan confidence boundary.
-
+# `molchancb(N, alpha)` for N > 20 is slow (julia is slow in handling BigInt).
+# As a result, it is necessary to build a dictionary function for all possible NEQ to avoid
+# repeated calculation.
+uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
 
 DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.32]])
 
 getalms(α, neq) = DCB[α][neq]
 
-
-
-
-# TODO: consider move these functions out
 uniqueonly(x) = x |> unique |> only
 
 function getdcb(α, neq)
@@ -47,7 +48,6 @@ function getdcb(α, neq)
     fdcb = 1.0 .- alarmed .- missed
 end
 
-whichalpha = 0.32
 fdperc = "$(Int(round((1-whichalpha) * 100)))%"
 
 transform!(df,
@@ -73,29 +73,12 @@ transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,
 CF23 = ColorsFigure23(P)
 @assert isequal(P.table, df)
 
+# # Common functions for plots
 
-
-tablegpbytrainyr = groupby(P.table, :train_yr)
-uniqfrc_3yr = tablegpbytrainyr[(train_yr=3,)].frc |> unique
-
-# KEYNOTE: This is no longer working after updating CairoMakie
-# TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
-# (ax0a, f0a) = figureplot(TTP3yr; resolution=(800, 600))
-# Makie.save("Train_Test_Partitions_3years.png", f0a)
-
-
-
-# # Fitting Degree
 stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
-
-dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
-dropnanmissing!(dfcb)
-
-insertcols!(dfcb, :DCB_top => 1.0)
-insertcols!(dfcb, :DCB_bottom => -1.0)
 
 function label_DcHist!(f2;
     left_label="number of models",
@@ -108,7 +91,16 @@ function label_DcHist!(f2;
     Label(f2[:, 0], left_label; rotation=+π / 2, tellwidth=true, tellheight=false, common_setting...)
     Label(f2[0, :], top_label; rotation=0, tellwidth=false, tellheight=true, common_setting...)
     Label(f2[end+1, :], bottom_label; rotation=0, tellwidth=false, tellheight=true, common_setting...)
-end
+end # Add left, top and bottom super labels.
+
+# # Fitting Degree
+# combined DataFrame for plot
+dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
+dropnanmissing!(dfcb)
+
+insertcols!(dfcb, :DCB_top => 1.0) # this is for plotting shaded area
+insertcols!(dfcb, :DCB_bottom => -1.0)
+
 dcmeanstyle = (color=:red, linestyle=:solid)
 dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
@@ -116,15 +108,12 @@ f1 = Figure(; resolution=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[2, 1] = GridLayout()
 
-# colsize!(f1.layout, 1, Relative(3 / 4))
+# rowsize!(f1.layout, 1, Relative(3 / 4))
 let
     rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
                   mapping(color=:frc_ind) *
                   mapping(:frc_ind,
                       :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
-    dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
-    hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
-
 
     clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
     clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
@@ -142,12 +131,7 @@ Legend(pl_legend[1, 1],
     "Forecasting phase",
     labelsize=12,
     tellheight=true, tellwidth=true, halign=:left, valign=:top, orientation=:horizontal, nbanks=4)
-# Legend(pl_legend[1, 1],
-#     [[LineElement(; dcmeanstyle...)]],
-#     ["overall average"];
-#     labelsize=12,
-#     valign=:bottom, tellheight=true
-# )
+
 Legend(pl_legend[2, 1],
     [
         [
@@ -180,7 +164,7 @@ df2 = @chain df begin
     transform(:frc => ByRow(nday) => :total_area)
 
 end
-
+# TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
 
 dfcb2 = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
