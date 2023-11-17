@@ -110,7 +110,7 @@ pl_legend = f1[2, 1] = GridLayout()
 
 # rowsize!(f1.layout, 1, Relative(3 / 4))
 let
-    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
+    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.3) *
                   mapping(color=:frc_ind) *
                   mapping(:frc_ind,
                       :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
@@ -153,14 +153,21 @@ Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 # # Overall fitting degrees
 
+calcfd(τ, τ₀, μ, μ₀) = 1 - τ / τ₀ - μ / μ₀
 
 df2 = @chain df begin
+    # Calculate total number of earthquakes and alarmed area
     groupby([:frc, :prp, :trial])
-    combine(Cols(r"NEQ") .=> uniqueonly, :AlarmedRateForecasting => mean; renamecols=false)
-    # CHECKPOINT: combine hittedRate, calculate hittedEQK_min and _max accordingly.
-    transform([:frc, :AlarmedRateForecasting] => ByRow((t, τ) -> dtstr2nday(t) * τ) => :alarmed_area)
-    transform(:frc => ByRow(nday) => :total_area)
-
+    combine(Cols(r"NEQ") .=> uniqueonly, :MissingRateForecasting => mean, :AlarmedRateForecasting => mean; renamecols=false)
+    transform([:MissingRateForecasting, :NEQ_min] => ByRow((m, n) -> n * m) => :missed_min)
+    transform([:MissingRateForecasting, :NEQ_max] => ByRow((m, n) -> n * m) => :missed_max)
+    transform([:AlarmedRateForecasting, :frc] => ByRow((τ, t) -> τ * dtstr2nday(t)) => :alarmed_area)
+    transform(:frc => ByRow(dtstr2nday) => :total_area)
+    #
+    groupby([:prp, :trial])
+    combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> sum, ; renamecols=false)
+    transform([:alarmed_area, :total_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
+    transform([:alarmed_area, :total_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
 end
 # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
