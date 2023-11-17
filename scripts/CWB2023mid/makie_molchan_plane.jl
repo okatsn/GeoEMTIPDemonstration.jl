@@ -1,3 +1,4 @@
+# https://juliadatascience.io/recipe_df
 using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
@@ -13,6 +14,7 @@ using CWBProjectSummaryDatasets
 using GeoEMTIPDemonstration
 using MolchanCB
 using Dates
+
 df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
 df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GE_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GE", :train_yr => 3)
 df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GM_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GM", :train_yr => 3)
@@ -23,19 +25,19 @@ df = vcat(
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
 
 
-uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
+# SETME: Parameter settings:
+whichalpha = 0.32
 
 # # A dictionary function for efficiently obtain Molchan confidence boundary.
-
+# `molchancb(N, alpha)` for N > 20 is slow (julia is slow in handling BigInt).
+# As a result, it is necessary to build a dictionary function for all possible NEQ to avoid
+# repeated calculation.
+uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
 
 DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.32]])
 
 getalms(α, neq) = DCB[α][neq]
 
-
-
-
-# TODO: consider move these functions out
 uniqueonly(x) = x |> unique |> only
 
 function getdcb(α, neq)
@@ -47,7 +49,6 @@ function getdcb(α, neq)
     fdcb = 1.0 .- alarmed .- missed
 end
 
-whichalpha = 0.32
 fdperc = "$(Int(round((1-whichalpha) * 100)))%"
 
 transform!(df,
@@ -73,29 +74,12 @@ transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,
 CF23 = ColorsFigure23(P)
 @assert isequal(P.table, df)
 
+# # Common functions for plots
 
-
-tablegpbytrainyr = groupby(P.table, :train_yr)
-uniqfrc_3yr = tablegpbytrainyr[(train_yr=3,)].frc |> unique
-
-# KEYNOTE: This is no longer working after updating CairoMakie
-# TTP3yr = TrainTestPartition23a(uniqfrc_3yr, 3)
-# (ax0a, f0a) = figureplot(TTP3yr; resolution=(800, 600))
-# Makie.save("Train_Test_Partitions_3years.png", f0a)
-
-
-
-# # Fitting Degree
 stryear(x) = "$x years"
 repus(x) = replace(x, "_" => "-")
 xlabel2 = L"\text{Filter}"
 ylabel2 = L"D_c  \text{(averaged over trials)}"
-
-dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
-dropnanmissing!(dfcb)
-
-insertcols!(dfcb, :DCB_top => 1.0)
-insertcols!(dfcb, :DCB_bottom => -1.0)
 
 function label_DcHist!(f2;
     left_label="number of models",
@@ -108,7 +92,16 @@ function label_DcHist!(f2;
     Label(f2[:, 0], left_label; rotation=+π / 2, tellwidth=true, tellheight=false, common_setting...)
     Label(f2[0, :], top_label; rotation=0, tellwidth=false, tellheight=true, common_setting...)
     Label(f2[end+1, :], bottom_label; rotation=0, tellwidth=false, tellheight=true, common_setting...)
-end
+end # Add left, top and bottom super labels.
+
+# # Fitting Degree
+# combined DataFrame for plot
+dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
+dropnanmissing!(dfcb)
+
+insertcols!(dfcb, :DCB_top => 1.0) # this is for plotting shaded area
+insertcols!(dfcb, :DCB_bottom => -1.0)
+
 dcmeanstyle = (color=:red, linestyle=:solid)
 dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
@@ -116,15 +109,12 @@ f1 = Figure(; resolution=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[2, 1] = GridLayout()
 
-# colsize!(f1.layout, 1, Relative(3 / 4))
+# rowsize!(f1.layout, 1, Relative(3 / 4))
 let
-    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.1) *
+    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.3) *
                   mapping(color=:frc_ind) *
                   mapping(:frc_ind,
                       :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
-    dfcb_mean = combine(groupby(dfcb, [:prp, :trial]), :FittingDegreeMOM => mean)
-    hlineofmean = data(dfcb_mean) * visual(HLines; dcmeanstyle...) * mapping(:FittingDegreeMOM_mean) # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
-
 
     clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
     clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
@@ -142,18 +132,16 @@ Legend(pl_legend[1, 1],
     "Forecasting phase",
     labelsize=12,
     tellheight=true, tellwidth=true, halign=:left, valign=:top, orientation=:horizontal, nbanks=4)
-# Legend(pl_legend[1, 1],
-#     [[LineElement(; dcmeanstyle...)]],
-#     ["overall average"];
-#     labelsize=12,
-#     valign=:bottom, tellheight=true
-# )
+
+toppoints = [(0.0, 0.7), (0.33, 0.8), (0.66, 0.6), (1, 1)]
 Legend(pl_legend[2, 1],
     [
         [
         PolyElement(color=:gray69, strokecolor=:black, strokewidth=0.5,
             alpha=0.5,
-            points=Point2f[(0, 0), (1, 0), (1, 1), (0.66, 0.6), (0.33, 0.8), (0.0, 0.7)])
+            points=Point2f[toppoints..., (1, 0), (0, 0)]),
+        LineElement(color=:black, linestyle=nothing, points=Point2f.(toppoints), linewidth=1),
+        MarkerElement(color=:black, markersize=4, marker=:circle, points=Point2f.(toppoints))
     ]
     ],
     ["≤ $fdperc confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
@@ -166,46 +154,86 @@ Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 # # Overall fitting degrees
 
-dfcb2 = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
+calcfd(τ, τ₀, μ, μ₀) = 1 - τ / τ₀ - μ / μ₀
 
-dfcb2a = @chain df begin
-    groupby([:prp, :trial, :frc_ind])
-    combine(:NEQ_min => uniqueonly, :NEQ_max => uniqueonly; renamecols=false)
+dfcb2 = @chain df begin
+    # Calculate total number of earthquakes and alarmed area
+    # !!! note
+    #     To calculate overall fitting degree, sum over the number of EQK and area of TIP is required.
+    #     However, MagTIP-2022's `jointstation` did not yet return nEQK (number of target earthquakes)
+    #     and areaTIP (spatial TIP area) for each model (out of total 500 permutations).
+    #     I have no choice but use `NEQ_min`/`_max` (from MagTIP-2022's `jointstation_summary` with
+    #     'CalculateNEQK' option) to "restore" the number of hitted/missed earthquakes using
+    #     MissingRateForecasting and `NEQ_min`/`_max` (minimum/maximum possible number of target earthquakes).
+    transform([:MissingRateForecasting, :NEQ_min] => ByRow((m, n) -> n * m) => :missed_min)
+    transform([:MissingRateForecasting, :NEQ_max] => ByRow((m, n) -> n * m) => :missed_max)
+    transform([:AlarmedRateForecasting, :frc] => ByRow((τ, t) -> τ * dtstr2nday(t)) => :alarmed_area)
+    transform(:frc => ByRow(dtstr2nday) => :total_area)
+    groupby([:frc, :prp, :trial])
+    combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> mean; renamecols=false)
+    # NEQ must be integer, since in each frc, prp and trial, NEQ should be identical.
+    transform(Cols(r"NEQ") .=> ByRow(Int); renamecols=false)
+    #
     groupby([:prp, :trial])
-    combine(:NEQ_min => sum, :NEQ_max => sum; renamecols=false)
-    outerjoin(dfcb2; on=[:trial, :prp])
-    transform(
-        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_low,
-        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_high
-    )
+    combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> sum, ; renamecols=false)
+    transform([:alarmed_area, :total_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
+    transform([:alarmed_area, :total_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
+    # !!! warning
+    #     It should be noticed that here I assume spatial TIP area is identical accross frc.
+    transform(AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
+    transform(AsTable(Cols(r"DC\_summary")) => ByRow(nt -> diff(sort(nt))) => :DC_error)
+    transform(:DC_error => [:DC_error_low, :DC_error_high])
 end
 
 
+dfcb2a = @chain dfcb2 begin # separated since it is super slow
+    transform(Cols(r"NEQ") .=> ByRow(BigInt); renamecols=false)
+    transform(
+        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_low,
+        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_high
+    )
+    select(:prp, :trial, :DCB_low, :DCB_high)
+end
 
-dropnanmissing!(dfcb2a)
+dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
+
+# TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
+
+
+
+dropnanmissing!(dfcb2)
 
 
 f2 = Figure(; resolution=(800, 550))
-let
+let dfcb = dfcb2
     x = :prp => repus => xlabel2
     dcbars = (
-        visual(BarPlot) *
-        mapping(x, :FittingDegreeMOT => ylabel2)
+        visual(BarPlot; color=:royalblue4) *
+        mapping(x, :DC_summary => ylabel2)
     )
 
     cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
     dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
 
-    draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
+              visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
+
+    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
     Legend(f2[2, :],
         [
             [
-            LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.1), (1, 0.1)]),
-            LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.9), (1, 0.9)]),
-            MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.1), (0.5, 0.9)])]
+                LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
+                LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
+                MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])],
+            [
+                PolyElement(color=:royalblue4, strokecolor=:black, strokewidth=0.5,
+                    points=Point2f[(0, 0.8), (1, 0.8), (1, 0), (0, 0)]),
+                MarkerElement(color=:cadetblue3, markersize=13, marker='工', points=Point2f[(0.5, 0.8)])
+            ]
         ],
-        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
+        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+            "Fitting degree with error concerning minimum/maximum number of target EQKs"], ;
         labelsize=15,
         valign=:bottom, tellheight=true
     )
@@ -215,25 +243,6 @@ f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
 
-
-f2a = Figure(; resolution=(550, 450))
-dfcb2a = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
-dropnanmissing!(dfcb2a)
-content2 = data(dfcb2a) *
-           visual(BarPlot) *
-           mapping(:trial => "joint-station set", :FittingDegreeMOT => ylabel2)
-draw!(f2a, content2; axis=(xticklabelrotation=0.2π,))
-f2a
-Makie.save("FittingDegree_barplot_mono_color_with=nanmean_only_ULF-B.png", f2a)
-
-
-
-
-
-# CHECKPOINT:
-# - Write docstring in OkMakieToolkits
-# - Have a train-test phase plot
-# https://juliadatascience.io/recipe_df
 # ## Distribution of fitting degree
 
 
