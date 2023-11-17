@@ -229,7 +229,8 @@ let dfcb = dfcb2
             [
                 PolyElement(color=:royalblue4, strokecolor=:black, strokewidth=0.5,
                     points=Point2f[(0, 0.8), (1, 0.8), (1, 0), (0, 0)]),
-                MarkerElement(color=:cadetblue3, markersize=13, marker='工', points=Point2f[(0.5, 0.8)])
+                MarkerElement(color=:cadetblue3, markersize=13, marker='工', points=Point2f[(0.5, 0.8)]),
+                MarkerElement(color=:cadetblue3, markersize=6, marker=:circle, points=Point2f[(0.5, 0.8)])
             ]
         ],
         ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
