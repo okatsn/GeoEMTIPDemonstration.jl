@@ -158,32 +158,57 @@ calcfd(τ, τ₀, μ, μ₀) = 1 - τ / τ₀ - μ / μ₀
 
 dfcb2 = @chain df begin
     # Calculate total number of earthquakes and alarmed area
-    groupby([:frc, :prp, :trial])
-    combine(Cols(r"NEQ") .=> uniqueonly, :MissingRateForecasting => mean, :AlarmedRateForecasting => mean; renamecols=false)
+    # !!! note
+    #     To calculate overall fitting degree, sum over the number of EQK and area of TIP is required.
+    #     However, MagTIP-2022's `jointstation` did not yet return nEQK (number of target earthquakes)
+    #     and areaTIP (spatial TIP area) for each model (out of total 500 permutations).
+    #     I have no choice but use `NEQ_min`/`_max` (from MagTIP-2022's `jointstation_summary` with
+    #     'CalculateNEQK' option) to "restore" the number of hitted/missed earthquakes using
+    #     MissingRateForecasting and `NEQ_min`/`_max` (minimum/maximum possible number of target earthquakes).
     transform([:MissingRateForecasting, :NEQ_min] => ByRow((m, n) -> n * m) => :missed_min)
     transform([:MissingRateForecasting, :NEQ_max] => ByRow((m, n) -> n * m) => :missed_max)
     transform([:AlarmedRateForecasting, :frc] => ByRow((τ, t) -> τ * dtstr2nday(t)) => :alarmed_area)
     transform(:frc => ByRow(dtstr2nday) => :total_area)
+    groupby([:frc, :prp, :trial])
+    combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> mean; renamecols=false)
+    # NEQ must be integer, since in each frc, prp and trial, NEQ should be identical.
+    transform(Cols(r"NEQ") .=> ByRow(Int); renamecols=false)
     #
     groupby([:prp, :trial])
     combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> sum, ; renamecols=false)
     transform([:alarmed_area, :total_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
     transform([:alarmed_area, :total_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
-    transform(
-        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_low,
-        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_high
-    )
+    # !!! warning
+    #     It should be noticed that here I assume spatial TIP area is identical accross frc.
+    transform(AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
+    transform(AsTable(Cols(r"DC\_summary")) => ByRow(nt -> diff(sort(nt))) => :DC_error)
+    transform(:DC_error => [:DC_error_low, :DC_error_high])
 end
+
+
+dfcb2a = @chain dfcb2 begin # separated since it is super slow
+    transform(Cols(r"NEQ") .=> ByRow(BigInt); renamecols=false)
+    transform(
+        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_low,
+        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_high
+    )
+    select(:prp, :trial, :DCB_low, :DCB_high)
+end
+
+dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
+
 # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
+
+
 
 dropnanmissing!(dfcb2)
 
 
 f2 = Figure(; resolution=(800, 550))
-let dfcb = transform(dfcb2, AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
+let dfcb = dfcb2
     x = :prp => repus => xlabel2
     dcbars = (
-        visual(BarPlot) *
+        visual(BarPlot; color=:royalblue4) *
         mapping(x, :DC_summary => ylabel2)
     )
 
@@ -191,15 +216,24 @@ let dfcb = transform(dfcb2, AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :
 
     dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
 
-    draw!(f2, data(dfcb) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
+              visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
+
+    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
     Legend(f2[2, :],
         [
             [
-            LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.1), (1, 0.1)]),
-            LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.9), (1, 0.9)]),
-            MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.1), (0.5, 0.9)])]
+                LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
+                LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
+                MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])],
+            [
+                PolyElement(color=:royalblue4, strokecolor=:black, strokewidth=0.5,
+                    points=Point2f[(0, 0.8), (1, 0.8), (1, 0), (0, 0)]),
+                MarkerElement(color=:cadetblue3, markersize=13, marker='工', points=Point2f[(0.5, 0.8)])
+            ]
         ],
-        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
+        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+            "Fitting degree with error concerning minimum/maximum number of target EQKs"], ;
         labelsize=15,
         valign=:bottom, tellheight=true
     )
