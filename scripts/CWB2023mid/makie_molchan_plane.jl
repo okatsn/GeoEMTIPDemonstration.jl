@@ -132,12 +132,15 @@ Legend(pl_legend[1, 1],
     labelsize=12,
     tellheight=true, tellwidth=true, halign=:left, valign=:top, orientation=:horizontal, nbanks=4)
 
+toppoints = [(0.0, 0.7), (0.33, 0.8), (0.66, 0.6), (1, 1)]
 Legend(pl_legend[2, 1],
     [
         [
         PolyElement(color=:gray69, strokecolor=:black, strokewidth=0.5,
             alpha=0.5,
-            points=Point2f[(0, 0), (1, 0), (1, 1), (0.66, 0.6), (0.33, 0.8), (0.0, 0.7)])
+            points=Point2f[toppoints..., (1, 0), (0, 0)]),
+        LineElement(color=:black, linestyle=nothing, points=Point2f.(toppoints), linewidth=1),
+        MarkerElement(color=:black, markersize=4, marker=:circle, points=Point2f.(toppoints))
     ]
     ],
     ["≤ $fdperc confidence boundary of fitting degree for minimum/maximum number of target EQKs"];
