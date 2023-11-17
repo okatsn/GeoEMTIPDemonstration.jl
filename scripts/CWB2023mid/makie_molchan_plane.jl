@@ -1,3 +1,4 @@
+# https://juliadatascience.io/recipe_df
 using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
@@ -155,7 +156,7 @@ Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 calcfd(τ, τ₀, μ, μ₀) = 1 - τ / τ₀ - μ / μ₀
 
-df2 = @chain df begin
+dfcb2 = @chain df begin
     # Calculate total number of earthquakes and alarmed area
     groupby([:frc, :prp, :trial])
     combine(Cols(r"NEQ") .=> uniqueonly, :MissingRateForecasting => mean, :AlarmedRateForecasting => mean; renamecols=false)
@@ -168,42 +169,29 @@ df2 = @chain df begin
     combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> sum, ; renamecols=false)
     transform([:alarmed_area, :total_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
     transform([:alarmed_area, :total_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
-end
-# TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
-
-
-dfcb2 = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
-
-dfcb2a = @chain df begin
-    groupby([:prp, :trial, :frc_ind])
-    combine(:NEQ_min => uniqueonly, :NEQ_max => uniqueonly; renamecols=false)
-    groupby([:prp, :trial])
-    combine(:NEQ_min => sum, :NEQ_max => sum; renamecols=false)
-    outerjoin(dfcb2; on=[:trial, :prp])
     transform(
         :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_low,
         :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, big(n)), init=-Inf)) => :DCB_high
     )
 end
+# TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
-
-
-dropnanmissing!(dfcb2a)
+dropnanmissing!(dfcb2)
 
 
 f2 = Figure(; resolution=(800, 550))
-let
+let dfcb = transform(dfcb2, AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
     x = :prp => repus => xlabel2
     dcbars = (
         visual(BarPlot) *
-        mapping(x, :FittingDegreeMOT => ylabel2)
+        mapping(x, :DC_summary => ylabel2)
     )
 
     cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
     dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
 
-    draw!(f2, data(dfcb2a) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    draw!(f2, data(dfcb) * (dcbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
     Legend(f2[2, :],
         [
             [
@@ -221,25 +209,6 @@ f2
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
 
-
-f2a = Figure(; resolution=(550, 450))
-dfcb2a = combine(groupby(df, [:prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOT)
-dropnanmissing!(dfcb2a)
-content2 = data(dfcb2a) *
-           visual(BarPlot) *
-           mapping(:trial => "joint-station set", :FittingDegreeMOT => ylabel2)
-draw!(f2a, content2; axis=(xticklabelrotation=0.2π,))
-f2a
-Makie.save("FittingDegree_barplot_mono_color_with=nanmean_only_ULF-B.png", f2a)
-
-
-
-
-
-# CHECKPOINT:
-# - Write docstring in OkMakieToolkits
-# - Have a train-test phase plot
-# https://juliadatascience.io/recipe_df
 # ## Distribution of fitting degree
 
 
