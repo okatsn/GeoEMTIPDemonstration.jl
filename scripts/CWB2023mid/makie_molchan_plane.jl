@@ -25,6 +25,15 @@ df = vcat(
 # TODO: consider deprecate `dropnanmissing!` in `figureplot`
 
 
+# NEQ summary table
+dfneq = @chain df begin
+    groupby([:prp, :trial, :frc])
+    combine(Cols(r"NEQ") .=> (x -> only(unique(extrema(x)))); renamecols=false)
+    groupby([:frc, :trial])
+    combine([:NEQ_min, :NEQ_max] => ((a, b) -> extrema(vcat(a, b))) => :NEQ_range)
+    unstack(:frc, :trial, :NEQ_range)
+end
+
 # SETME: Parameter settings:
 whichalpha = 0.32
 
