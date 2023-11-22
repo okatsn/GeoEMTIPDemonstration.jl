@@ -118,13 +118,17 @@ eqkmap = Axis(f[1, 1],
 
 catalogplot = twmap + data(catalog) * visual(Scatter) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML) * mapping(:lon, :lat)
 
+
 let
     gd = draw!(eqkmap, catalogplot)
     colorbar!(f[1, 2], gd)
 end
-# scatter!(catalogplot, [Point2f(row.Lon, row.Lat) for row in eachrow(station_location)]; marker=:utriangle, color=(:blue, 1.0))
-# text!(catalogplot, station_location.Lon, station_location.Lat; text=station_location.code,
-#     align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
+
+scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0), markersize=8.5)
+text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
+    align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=8)
+
+
 f
 
 # We show only cases after 2022 in the final report of 2023 (it is too much to show all)
