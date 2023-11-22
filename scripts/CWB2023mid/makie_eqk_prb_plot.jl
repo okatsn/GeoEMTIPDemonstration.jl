@@ -36,8 +36,20 @@ mkpath(targetdir())
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
+
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
+transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
+
+catalog = CWBProjectSummaryDatasets.dataset("EventMag5", "Catalog")
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
+
+twmap = data(twshp) * mapping(:geometry) * visual(
+            Choropleth,
+            color=:white, # "white" is required to make background clean
+            linestyle=:solid,
+            strokecolor=:turquoise2,
+            strokewidth=0.75
+        )
 
 # palletes for `draw` of AlgebraOfGraphic (AoG)
 # KEYNOTE:
@@ -65,6 +77,7 @@ df = vcat(df_ge, df_gm, df_mix)
 
 
 
+
 # Categorize :eventId
 # - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
 # - Try the followings to figure out:
@@ -84,6 +97,37 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
+
+
+# Catalog
+inrange(r) = x -> (x >= first(r) && x <= last(r))
+filter!(:date => inrange(extrema(df.dt)), catalog)
+transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
+
+tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
+
+f = Figure()
+eqkmap = Axis(f[1, 1],
+    # xticks=119.5:0.5:122.0,
+    aspect=DataAspect(),
+    xtickformat=tkformat,
+    ytickformat=tkformat,
+    titlesize=15,
+    xlabel="Longitude",
+    ylabel="Latitude")
+
+catalogplot = twmap + data(catalog) * visual(Scatter) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML) * mapping(:lon, :lat)
+
+let
+    gd = draw!(eqkmap, catalogplot)
+    colorbar!(f[1, 2], gd)
+end
+# scatter!(catalogplot, [Point2f(row.Lon, row.Lat) for row in eachrow(station_location)]; marker=:utriangle, color=(:blue, 1.0))
+# text!(catalogplot, station_location.Lon, station_location.Lat; text=station_location.code,
+#     align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
+f
+
+# We show only cases after 2022 in the final report of 2023 (it is too much to show all)
 filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df)
 
 
@@ -227,15 +271,7 @@ function eqkprb_plot(dfg1)
             dtrangestr(eventtrange...)
         ], "; ")
     # Label(panel_map[2, 1], geotitle, tellheight=false, fontsize=15, halign=:right)
-    tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
 
-    twmap = data(twshp) * mapping(:geometry) * visual(
-                Choropleth,
-                color=:white, # "white" is required to make background clean
-                linestyle=:solid,
-                strokecolor=:turquoise2,
-                strokewidth=0.75
-            )
     ga = Axis(panel_map[:, :],
         # xticks=119.5:0.5:122.0,
         aspect=DataAspect(),
@@ -268,7 +304,6 @@ end
 
 
 # Loaded table preprocessing
-transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
 for dfg in groupdfs
