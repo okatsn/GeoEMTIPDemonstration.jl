@@ -102,34 +102,48 @@ transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)
 # Catalog
 inrange(r) = x -> (x >= first(r) && x <= last(r))
 filter!(:date => inrange(extrema(df.dt)), catalog)
+filter!(:ML => (x -> x ≥ 5.0), catalog)
 transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
 
 tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
+magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
-f = Figure()
-eqkmap = Axis(f[1, 1],
-    # xticks=119.5:0.5:122.0,
-    aspect=DataAspect(),
-    xtickformat=tkformat,
-    ytickformat=tkformat,
-    titlesize=15,
-    xlabel="Longitude",
-    ylabel="Latitude")
+f = with_theme(resolution=(1000, 700)) do
+    f = Figure()
+    eqkmap = Axis(f[1, 1],
+        # xticks=119.5:0.5:122.0,
+        aspect=DataAspect(),
+        xtickformat=tkformat,
+        ytickformat=tkformat,
+        titlesize=15,
+        xlabel="Longitude",
+        ylabel="Latitude")
 
-catalogplot = twmap + data(catalog) * visual(Scatter) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML) * mapping(:lon, :lat)
-
-
-let
+    catalogplot = twmap + data(catalog) * visual(Scatter) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML => magtransform) * mapping(:lon, :lat)
     gd = draw!(eqkmap, catalogplot)
-    colorbar!(f[1, 2], gd)
+    colorbar!(f[1, 2], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)))
+
+    scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 0.5), markersize=14)
+    text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
+        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=13)
+
+    MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
+    MLrefx = fill(118.2, length(MLrefs))
+    MLrefy = range(21.4, 23, length=length(MLrefs)) |> collect
+
+    scatter!(eqkmap, MLrefx, MLrefy, markersize=magtransform.(MLrefs), color=:black)
+    text!(eqkmap, MLrefx, MLrefy; text=string.(MLrefs), align=(:left, :center), offset=(10, 0.0), fontsize=13)
+    text!(eqkmap, MLrefx[end], MLrefy[end]; text=L"$M_L$", align=(:center, :bottom), offset=(0.0, 15.0), fontsize=20)
+    display(f)
+    f
 end
 
-scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0), markersize=8.5)
-text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
-    align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=8)
+Makie.save("Catalog_M5_map.png", f)
 
 
-f
+
+# f
+
 
 # We show only cases after 2022 in the final report of 2023 (it is too much to show all)
 filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df)
