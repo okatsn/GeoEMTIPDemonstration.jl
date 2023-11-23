@@ -33,11 +33,24 @@ mkpath(targetdir())
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 # SETME
+train_yr = Year(3) # this is for earthquake plot
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
+
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
+transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
+
+catalog = CWBProjectSummaryDatasets.dataset("EventMag5", "Catalog")
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
+
+twmap = data(twshp) * mapping(:geometry) * visual(
+            Choropleth,
+            color=:white, # "white" is required to make background clean
+            linestyle=:solid,
+            strokecolor=:turquoise2,
+            strokewidth=0.75
+        )
 
 # palletes for `draw` of AlgebraOfGraphic (AoG)
 # KEYNOTE:
@@ -65,6 +78,7 @@ df = vcat(df_ge, df_gm, df_mix)
 
 
 
+
 # Categorize :eventId
 # - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
 # - Try the followings to figure out:
@@ -84,6 +98,56 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
+
+
+# Catalog
+inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
+filter!(:date => inrange(extrema(df.dt)), catalog)
+filter!(:ML => (x -> x ≥ 5.0), catalog)
+transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
+
+tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
+magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
+
+f = with_theme(resolution=(1000, 700)) do
+    f = Figure()
+    eqkmap = Axis(f[1, 1:5],
+        # xticks=119.5:0.5:122.0,
+        aspect=DataAspect(),
+        xtickformat=tkformat,
+        ytickformat=tkformat,
+        titlesize=15,
+        xlabel="Longitude",
+        ylabel="Latitude",
+        backgroundcolor=:white)
+
+    catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML => magtransform) * mapping(:lon, :lat)
+    gd = draw!(eqkmap, catalogplot)
+    colorbar!(f[0, 2:4], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
+
+    scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
+    text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
+        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=11)
+
+    MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
+    MLrefx = fill(118.2, length(MLrefs))
+    MLrefy = range(21.4, 23, length=length(MLrefs)) |> collect
+
+    scatter!(eqkmap, MLrefx, MLrefy, markersize=magtransform.(MLrefs), color=:black)
+    text!(eqkmap, MLrefx, MLrefy; text=string.(MLrefs), align=(:left, :center), offset=(10, 0.0), fontsize=13)
+    text!(eqkmap, MLrefx[end], MLrefy[end]; text=L"$M_L$", align=(:center, :bottom), offset=(0.0, 15.0), fontsize=20)
+    display(f)
+    f
+end
+
+Makie.save("Catalog_M5_map.png", f)
+
+
+
+# f
+
+
+# We show only cases after 2022 in the final report of 2023 (it is too much to show all)
 filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df)
 
 
@@ -227,15 +291,7 @@ function eqkprb_plot(dfg1)
             dtrangestr(eventtrange...)
         ], "; ")
     # Label(panel_map[2, 1], geotitle, tellheight=false, fontsize=15, halign=:right)
-    tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
 
-    twmap = data(twshp) * mapping(:geometry) * visual(
-                Choropleth,
-                color=:white, # "white" is required to make background clean
-                linestyle=:solid,
-                strokecolor=:turquoise2,
-                strokewidth=0.75
-            )
     ga = Axis(panel_map[:, :],
         # xticks=119.5:0.5:122.0,
         aspect=DataAspect(),
@@ -268,7 +324,6 @@ end
 
 
 # Loaded table preprocessing
-transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 
 for dfg in groupdfs
