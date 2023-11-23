@@ -109,9 +109,9 @@ transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) =>
 tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
-f = with_theme(resolution=(1000, 700)) do
+f = with_theme(resolution=(600, 700)) do
     f = Figure()
-    eqkmap = Axis(f[1, 1:5],
+    eqkmap = Axis(f[1, 0:11],
         # xticks=119.5:0.5:122.0,
         aspect=DataAspect(),
         xtickformat=tkformat,
@@ -119,11 +119,12 @@ f = with_theme(resolution=(1000, 700)) do
         titlesize=15,
         xlabel="Longitude",
         ylabel="Latitude",
-        backgroundcolor=:white)
+        backgroundcolor=:white,
+        limits=((118, 123.6), nothing))
 
     catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML => magtransform) * mapping(:lon, :lat)
     gd = draw!(eqkmap, catalogplot)
-    colorbar!(f[0, 2:4], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
+    colorbar!(f[0, 1:10], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
 
     scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
