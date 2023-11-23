@@ -137,6 +137,11 @@ f = with_theme(resolution=(600, 700)) do
     scatter!(eqkmap, MLrefx, MLrefy, markersize=magtransform.(MLrefs), color=:black)
     text!(eqkmap, MLrefx, MLrefy; text=string.(MLrefs), align=(:left, :center), offset=(10, 0.0), fontsize=13)
     text!(eqkmap, MLrefx[end], MLrefy[end]; text=L"$M_L$", align=(:center, :bottom), offset=(0.0, 15.0), fontsize=20)
+
+    # for row in eachrow((filter(:code => (x -> x in ["KUOL", "HUAL"]), station_location)))
+    #     arc!(eqkmap, Point2f(row.Lon, row.Lat), 0.94, -π, π; color=:red)
+    #     scatter!(eqkmap, Point2f(row.Lon, row.Lat); marker=:utriangle, color=(:red, 1.0), markersize=11)
+    # end
     display(f)
     f
 end
