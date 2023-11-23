@@ -33,6 +33,7 @@ mkpath(targetdir())
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 # SETME
+train_yr = Year(3) # this is for earthquake plot
 df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
 df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
@@ -100,7 +101,7 @@ transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)
 
 
 # Catalog
-inrange(r) = x -> (x >= first(r) && x <= last(r))
+inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
 filter!(:date => inrange(extrema(df.dt)), catalog)
 filter!(:ML => (x -> x ≥ 5.0), catalog)
 transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
@@ -110,22 +111,23 @@ magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
 f = with_theme(resolution=(1000, 700)) do
     f = Figure()
-    eqkmap = Axis(f[1, 1],
+    eqkmap = Axis(f[1, 1:5],
         # xticks=119.5:0.5:122.0,
         aspect=DataAspect(),
         xtickformat=tkformat,
         ytickformat=tkformat,
         titlesize=15,
         xlabel="Longitude",
-        ylabel="Latitude")
+        ylabel="Latitude",
+        backgroundcolor=:white)
 
-    catalogplot = twmap + data(catalog) * visual(Scatter) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML => magtransform) * mapping(:lon, :lat)
+    catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML => magtransform) * mapping(:lon, :lat)
     gd = draw!(eqkmap, catalogplot)
-    colorbar!(f[1, 2], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)))
+    colorbar!(f[0, 2:4], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
 
-    scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 0.5), markersize=14)
+    scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=13)
+        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=11)
 
     MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
