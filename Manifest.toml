@@ -2,7 +2,7 @@
 
 julia_version = "1.10.2"
 manifest_format = "2.0"
-project_hash = "5f9b9c858b91909ea42d0159965eaf5187a28a10"
+project_hash = "54a21e77cdf4c070c4c32a6ca98d174bfc32e13b"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -2105,12 +2105,6 @@ version = "7.2.1+1"
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
-
-[[deps.TWGEMSDatasets]]
-deps = ["SmallDatasetMaker"]
-path = "/home/jovyan/.julia/dev/TWGEMSDatasets"
-uuid = "e02d82d9-7e7e-46f3-9a6c-b9afd88f5ac7"
-version = "0.1.4"
 
 [[deps.TableOperations]]
 deps = ["SentinelArrays", "Tables", "Test"]
