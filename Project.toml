@@ -36,6 +36,7 @@ SWCForecastBase = "f25bfc00-93e4-48b9-89c1-3948a036d4be"
 Shapefile = "8e980c4a-a4fe-5da2-b3a7-4b4b0353a2f4"
 SphericalGeometry = "b58e7a8d-b3e8-4a5d-bea9-e6440cab77fd"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TWGEMSDatasets = "e02d82d9-7e7e-46f3-9a6c-b9afd88f5ac7"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
 [compat]
@@ -65,12 +66,10 @@ NaNMath = "1.0.2"
 OkDataFrameTools = "0.2"
 OkFiles = "0.4.2"
 OkMLModels = "0.4.2"
-OkMakieToolkits = "0.9"
 SWCForecastBase = "0.4.14"
 Shapefile = "0.10.0"
 SphericalGeometry = "0.1.1"
 WGLMakie = "0.8.12"
-julia = "1.8 - 1.9"
 
 [extras]
 CompatHelperLocal = "5224ae11-6099-4aaa-941d-3aab004bd678"

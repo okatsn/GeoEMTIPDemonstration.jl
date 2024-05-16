@@ -34,14 +34,10 @@ mkpath(targetdir())
 
 # SETME
 train_yr = Year(3) # this is for earthquake plot
-df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
-df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
-df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
-
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
-catalog = CWBProjectSummaryDatasets.dataset("EventMag5", "Catalog")
+catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
 twmap = data(twshp) * mapping(:geometry) * visual(
@@ -60,21 +56,9 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
 
 
-
-
-# Merge DataFrame
-
-tagdfs = Dict(
-    "GE" => df_ge,
-    "GM" => df_gm,
-    "MIX" => df_mix
-);
-
-for (tag, df) in tagdfs
-    insertcols!(df, :trial => tag)
-end
-
-df = vcat(df_ge, df_gm, df_mix)
+# Load table (please pull data from gemstiptree)
+df = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_2024event403_compat_1")
+insertcols!(df, :trial => "mix")
 
 
 
@@ -98,7 +82,8 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
-
+# TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
+filter!(:dt => t -> t < DateTime(2024,5,6), df)
 
 # Catalog
 inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
@@ -106,7 +91,7 @@ filter!(:date => inrange(extrema(df.dt)), catalog)
 filter!(:ML => (x -> x ≥ 5.0), catalog)
 transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
 
-tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
+tkformat = v -> LaTeXString.(string.(round.(v, digits = 2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
 f = with_theme(resolution=(600, 700)) do
@@ -128,7 +113,7 @@ f = with_theme(resolution=(600, 700)) do
 
     scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=11)
+        align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
     MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
@@ -259,7 +244,7 @@ function eqkprb_plot(dfg1)
     # palettes=(; color=CF23.prp.to_color.(1:4))
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
-    rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    rightaxs = OkMakieToolkits.twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, eqkplts)
 
     lenax = length(leftaxs)
@@ -315,7 +300,7 @@ function eqkprb_plot(dfg1)
 
     scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
     text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
+        align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 4), fontsize=15)
 
     colsize!(f.layout, 1, Relative(0.6))
     colgap!(f.layout, 1, Relative(0.02))
