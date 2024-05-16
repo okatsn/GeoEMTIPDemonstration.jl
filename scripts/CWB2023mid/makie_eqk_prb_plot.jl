@@ -37,7 +37,7 @@ train_yr = Year(3) # this is for earthquake plot
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
-catalog = CWBProjectSummaryDatasets.dataset("EventMag5", "Catalog")
+catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
 twmap = data(twshp) * mapping(:geometry) * visual(
@@ -82,7 +82,8 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
-
+# TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
+filter!(:dt => t -> t < DateTime(2024,5,6), df)
 
 # Catalog
 inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
@@ -90,7 +91,7 @@ filter!(:date => inrange(extrema(df.dt)), catalog)
 filter!(:ML => (x -> x ≥ 5.0), catalog)
 transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
 
-tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
+tkformat = v -> LaTeXString.(string.(round.(v, digits = 2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
 f = with_theme(resolution=(600, 700)) do
