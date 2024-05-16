@@ -34,10 +34,6 @@ mkpath(targetdir())
 
 # SETME
 train_yr = Year(3) # this is for earthquake plot
-df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
-df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
-df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
-
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
@@ -60,21 +56,9 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
 
 
-
-
-# Merge DataFrame
-
-tagdfs = Dict(
-    "GE" => df_ge,
-    "GM" => df_gm,
-    "MIX" => df_mix
-);
-
-for (tag, df) in tagdfs
-    insertcols!(df, :trial => tag)
-end
-
-df = vcat(df_ge, df_gm, df_mix)
+# Load table (please pull data from gemstiptree)
+df = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_2024event403_compat_1")
+insertcols!(df, :trial => "mix")
 
 
 
@@ -128,7 +112,7 @@ f = with_theme(resolution=(600, 700)) do
 
     scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=11)
+        align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
     MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
@@ -259,7 +243,7 @@ function eqkprb_plot(dfg1)
     # palettes=(; color=CF23.prp.to_color.(1:4))
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
-    rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    rightaxs = OkMakieToolkits.twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, eqkplts)
 
     lenax = length(leftaxs)
@@ -315,7 +299,7 @@ function eqkprb_plot(dfg1)
 
     scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
     text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
+        align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 4), fontsize=15)
 
     colsize!(f.layout, 1, Relative(0.6))
     colgap!(f.layout, 1, Relative(0.02))
