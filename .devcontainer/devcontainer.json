@@ -1,0 +1,79 @@
+// Instruction
+// - For "name", make it unique among existing container
+// - For all others, make it the same/consistent with that in https://github.com/okatsn/MyTeXLife
+{
+    "name": "GeoEMTIPDemonstration", 
+    "dockerComposeFile": [
+        "docker-compose.yml"
+    ],
+    // the service in docker-compose.yml 
+    "service": "devgemtip", 
+    "shutdownAction": "stopCompose",
+    "workspaceFolder": "/home/jovyan/workspace", // KEYNOTE: make this consistent with that in docker-compose.yml. See okatsn/my-tex-life for where it is defined
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // KEYNOTE: Please refer "dev.containers.defaultExtensions" in  settings.json (Ctrl+Shift+P and Open User Settings (JSON)) for Common Extensions
+                // MyJuliaSpace Exclusive
+                // CHECKPOINT: julia extension not installed on rebuild.
+                "julialang.language-julia", // julia
+                "colinfang.markdown-julia",
+                // CHECKPOINT: unlock me if python and jupyter are installed
+                // "ms-python.python",                        // python
+                // "ms-python.vscode-pylance",
+                // "quarto.quarto",
+                "tamasfe.even-better-toml",
+                "valentjn.vscode-ltex", // Spell & Grammar check
+                "stkb.rewrap", // rewrap comments after n characters on one line
+                "vscode-icons-team.vscode-icons",
+                // Typst extensions
+                "nvarner.typst-lsp",
+                "myriad-dreamin.tinymist",
+                "oijaz.unicode-latex",
+                // DVC
+                "iterative.dvc", // data version control
+                // Quarto
+                "quarto.quarto",
+            ],
+            "settings": {
+                "python.terminal.activateEnvironment": false,
+                "gitProjectManager.baseProjectsFolders": [
+                    "~/workspace/projects", // SUB_PROJECT_DIR defined in this Dockerfile or the previous image (i.e., okatsn/my-tex-life)
+                    "~/.julia/dev",
+                    // KEYNOTE: it is allows GPM (felipecaputo.git-project-manager) to open repo in the "projects" in a new window
+                    "~/workspace"
+                ],
+                // SECTION: MyTeXLifeWithJulia Exclusive
+                "ltex.dictionary": {
+                    "en-US": [
+                        ":~/workspace/ltex-dictionary/ltex.dictionary.en-US.txt",
+                    ],
+                },
+                // !!! note "workspaceExternalFile"
+                //     - "workspaceExternalFile" refers "~/workspace/ltex-dictionary/externalFile.txt", no matter whether you have set it in "ltex.dictionary" 
+                //     - In that "externalFile.txt", you can specify the relative path to other dictionary such as "ltex.dictionary.en-US.txt"
+                //
+                // For more information, please refer: 
+                // https://valentjn.github.io/ltex/settings.html#ltexdictionary
+                // https://valentjn.github.io/ltex/vscode-ltex/setting-scopes-files.html#external-setting-files
+                "ltex.configurationTarget": {
+                    "dictionary": "workspaceExternalFile", // This setting allows Quick Fix (Ctrl+.) add words to "workspaceExternalFile"
+                },
+                // SECTION: Quarto
+                "python.defaultInterpreterPath": "/opt/conda/bin/python", // this is for quarto to correctly work with VSCode. This path is obtained from `quarto check jupyter`.
+                "quarto.usePipQuarto": false,
+                "quarto.render.previewType": "external",
+                // SECTION: JULIA Exclusive
+                "julia.environmentPath": "~/workspace", // KEYNOTE: it is expected to be WORKSPACE_DIR  defined in Dockerfile
+                // General settings
+                "files.eol": "\n",
+                "editor.formatOnSave": true,
+                "files.associations": {
+                    "*.tex": "latex"
+                },
+                "dev.containers.cacheVolume": true
+            }
+        }
+    }
+    // "postCreateCommand": "",
+}

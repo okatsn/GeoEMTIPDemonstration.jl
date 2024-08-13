@@ -1,0 +1,51 @@
+# # Instruction
+# - assign a new image name
+# - make this file consistent with that in https://github.com/okatsn/MyTeXLife
+version: "3.8"
+
+services:
+  # The service name should be consistent with that in devcontainer.json
+  devgemtip:
+    build:
+      context: ..
+      #     That is out of /.devcontainer
+      # context: .
+      #     That is /.devcontainer
+      dockerfile: .devcontainer/Dockerfile
+
+    # Better not to have duplicate image name
+    image: gemtip 
+    init: true 
+    # See https://docs.docker.com/compose/compose-file/compose-file-v3/#init
+    
+    # Better not to have duplicate container name. Error "Conflict will occur if another. The container name "/tex-with-julia" is already in use by container" might occur if there is another container of the same name is currently running.
+    container_name: jupyter-with-julia-gemtip 
+    volumes:
+      # # The home directory is called "workspace"; try `cd ..` and `ls` to figure it out.
+      - ..:/home/jovyan/workspace
+      # # Docker socket to access Docker server
+      - /var/run/docker.sock:/var/run/docker.sock
+      # # SSH directory
+      - ~/.ssh:/home/jovyan/.ssh
+      # For Windows without WSL, a copy will be made from /tmp/.ssh to ~/.ssh to fix permissions
+      # - ~/.ssh:/tmp/.ssh:ro
+      # # Git config
+      - ~/.gitconfig:/home/jovyan/.gitconfig
+      # # Persistent volumes for this container; Avoid reinstall vscode extensions
+      - julia-depot:/home/jovyan/.julia
+      # # KEYNOTE: 
+      # # - Named volumes is chosen because VSCode extensions of this environment is not expected to be shared with those in WSL.
+      # # - Please refer to okatsn/MyTeXLife for more explanation
+      - vscode-server:/home/jovyan/.vscode-server
+
+
+    environment:
+      - TZ=TW
+      # Set time zone
+      # entrypoint: ["zsh", "-c", "while sleep 1000; do :; done"]
+    entrypoint: sh -c "sleep infinity"
+# KEYNOTE: Those defined volumes in service should be declared in the root level
+# Unbind vscode-server to volumes to ensure extensions in devcontainer.json to be installed on rebuild
+volumes:
+  julia-depot:
+  vscode-server:
