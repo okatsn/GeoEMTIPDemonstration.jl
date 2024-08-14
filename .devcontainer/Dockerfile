@@ -1,6 +1,6 @@
 FROM okatsn/my-julia-build:v1.10-2024d as build-julia
 FROM okatsn/my-quarto-build:2024c as build-quarto
-FROM okatsn/my-typst-space:latest AS build0
+FROM okatsn/my-typst-space:v2024d AS build0
 
 # Please refer to https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-minimal-notebook
 # # Docker image repository seems to moved to quay.io
@@ -43,6 +43,15 @@ RUN apt-get update && apt-get -y install \
     fonts-noto-cjk \
     fonts-noto-cjk-extra \
     fonts-noto-color-emoji
+
+## Install fonts that supports smcp
+RUN wget https://github.com/adobe-fonts/source-serif/archive/refs/heads/release.zip -O /tmp/temp123.zip  \
+    && unzip /tmp/temp123.zip -d /tmp/temp123  \
+    && mkdir -p /usr/share/fonts/opentype/source-serif-pro \
+    && cp /tmp/temp123/source-serif-release/OTF/*.otf /usr/share/fonts/opentype/source-serif-pro/ \
+    && fc-cache -fv \
+    && rm -rv /tmp/temp123 \
+    && rm -rv /tmp/temp123.zip
 
 ## Install typst
 COPY --from=build0 /bin/typst /bin
