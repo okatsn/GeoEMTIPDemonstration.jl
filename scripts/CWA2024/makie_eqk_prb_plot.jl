@@ -83,7 +83,7 @@ transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :event
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
 # TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-filter!(:dt => t -> t < DateTime(2024,5,6), df)
+filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
 
 # Catalog
 inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
@@ -91,7 +91,7 @@ filter!(:date => inrange(extrema(df.dt)), catalog)
 filter!(:ML => (x -> x ≥ 5.0), catalog)
 transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
 
-tkformat = v -> LaTeXString.(string.(round.(v, digits = 2)) .* L"^\circ")
+tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
 f = with_theme(resolution=(600, 700)) do
@@ -199,7 +199,7 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
-# dfg1 = groupdfs[5]
+# dfg1 = groupdfs[4]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
@@ -231,12 +231,11 @@ function eqkprb_plot(dfg1)
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
     # linecolors = :matter
     # in palettes: color=linecolors,
-    pprob = draw!(f[:, :], probplt;
-        palettes=(;
-            color=WGLMakie.categorical_colors(:Set1_4, 4),
-            layout=[(i, 1) for i in 1:lenlayout] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
-        )
-    )
+    draw(probplt)
+    pprob = draw!(f[:, :], probplt, scales(Color=(; palette=WGLMakie.categorical_colors(:Set1_4, 4)),
+        Layout=(; palette=[(i, 1) for i in 1:lenlayout]) # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
+        # What is a palette: https://aog.makie.org/stable/gallery/gallery/scales/custom_scales/#custom_scales
+    ))
 
     Label(f[:, 0], "probability around epicenters", tellheight=false, rotation=0.5π)
     legend!(f[end+1, :], pprob; tellwidth=false, tellheight=true, titleposition=:left, orientation=:horizontal)
