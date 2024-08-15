@@ -114,7 +114,7 @@ insertcols!(dfcb, :DCB_bottom => -1.0)
 dcmeanstyle = (color=:red, linestyle=:solid)
 dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
-f1 = Figure(; resolution=(800, 1000))
+f1 = Figure(; size=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[2, 1] = GridLayout()
 
@@ -190,7 +190,7 @@ dfcb2 = @chain df begin
     # !!! warning
     #     It should be noticed that here I assume spatial TIP area is identical accross frc.
     transform(AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
-    transform(AsTable(Cols(r"DC\_summary")) => ByRow(nt -> diff(sort(nt))) => :DC_error)
+    transform(AsTable(Cols(r"DC\_summary")) => ByRow(nt -> diff(sort(collect(nt)))) => :DC_error)
     transform(:DC_error => [:DC_error_low, :DC_error_high])
 end
 
@@ -213,7 +213,7 @@ dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
 dropnanmissing!(dfcb2)
 
 
-f2 = Figure(; resolution=(800, 550))
+f2 = Figure(; size=(800, 550))
 let dfcb = dfcb2
     x = :prp => repus => xlabel2
     dcbars = (
@@ -267,7 +267,7 @@ f3histkwargs = (bins=-1.05:0.05:1.05,)
 f3histkwargs_a = (bins=-0.05:0.05:1.05,)
 
 # Figure 3:
-f3 = Figure(; resolution=(800, 900))
+f3 = Figure(; size=(800, 900))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
 dcmm = combine(groupby(dfn, [:trial, :prp]),
@@ -282,6 +282,7 @@ dcmedian = data(dcmm) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:DC_medi
 
 histogram_all = (dchist + dcmean + dcmedian) * mapping(col=:trial, row=:prp)
 
+# CHECKPOINT
 f3p = draw!(f3, histogram_all)
 label_DcHist!(f3; right_label="", bottom_label=L"\text{Fitting Degree } D_C")
 # legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
@@ -290,7 +291,7 @@ f3
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 # Figure 3a:
-f3a = Figure(; resolution=(1000, 700))
+f3a = Figure(; size=(1000, 700))
 raincloudkwargs = (plot_boxplots=true, orientation=:vertical,
     cloud_width=0.85,
     clouds=hist,
@@ -329,7 +330,7 @@ Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 xylimits = (-0.05, 1.05)
 
 function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, target_file)
-    f50res = (resolution=(800, 700),)
+    f50res = (size=(800, 700),)
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f50res...)
 
@@ -362,7 +363,7 @@ f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "Molchan
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
 
-f5res = (resolution=(800, 700),)
+f5res = (size=(800, 700),)
 f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
 densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
 
