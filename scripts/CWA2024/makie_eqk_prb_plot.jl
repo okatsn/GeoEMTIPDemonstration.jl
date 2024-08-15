@@ -231,7 +231,6 @@ function eqkprb_plot(dfg1)
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
     # linecolors = :matter
     # in palettes: color=linecolors,
-    draw(probplt)
     pprob = draw!(f[:, :], probplt, scales(Color=(; palette=WGLMakie.categorical_colors(:Set1_4, 4)),
         Layout=(; palette=[(i, 1) for i in 1:lenlayout]) # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
         # What is a palette: https://aog.makie.org/stable/gallery/gallery/scales/custom_scales/#custom_scales
@@ -306,8 +305,8 @@ function eqkprb_plot(dfg1)
     # good resource: https://juliadatascience.io/makie_layouts
 
     r = 0.65
-    xlims!(extrema(get_value.(dfg.eventLon)) .+ (-r, +r)...)
-    ylims!(extrema(get_value.(dfg.eventLat)) .+ (-r, +r)...)
+    xlims!(ga, extrema(get_value.(dfg.eventLon)) .+ (-r, +r)...)
+    ylims!(ga, extrema(get_value.(dfg.eventLat)) .+ (-r, +r)...)
 
     f
 end
@@ -317,7 +316,7 @@ end
 
 
 for dfg in groupdfs
-    with_theme(resolution=(1000, 700),
+    with_theme(size=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
     ) do
