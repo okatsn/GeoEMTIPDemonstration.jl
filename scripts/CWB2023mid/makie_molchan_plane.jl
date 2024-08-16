@@ -87,6 +87,13 @@ CF23 = ColorsFigure23(P)
 # # This is new after AoG v0.7. Please refer https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
 scales_prp = scales(Color=(; palette=CF23.prp.colormap, categories=CF23.prp.colortag))
 scales_trial = scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag))
+scales_frc = scales(;
+    bar_rainbowcolor=(
+        Color = (palette=CF23.frc.colormap, categories=CF23.frc.colortag)
+    )
+)
+
+
 
 
 # # Common functions for plots
@@ -111,7 +118,7 @@ end # Add left, top and bottom super labels.
 
 # # Fitting Degree
 # combined DataFrame for plot
-dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
+dfcb = combine(groupby(df, [:frc_ind, :frc, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
 dropnanmissing!(dfcb)
 
 insertcols!(dfcb, :DCB_top => 1.0) # this is for plotting shaded area
@@ -126,17 +133,17 @@ pl_legend = f1[2, 1] = GridLayout()
 
 # rowsize!(f1.layout, 1, Relative(3 / 4))
 let
-    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.3) *
-                  mapping(color=:frc_ind) *
+    rainbowbars = visual(BarPlot, strokewidth=0.5, gap=0.3) *
+                  mapping(color=:frc => scale(:bar_rainbowcolor)) * # color can only be categorical (not Continuous).
                   mapping(:frc_ind,
-                      :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
+                      :FittingDegreeMOM => identity => ylabel2)
 
     clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
     clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
 
 
     plt = (data(dfcb) * (clevel1 + rainbowbars + clevel2)) * mapping(col=:trial, row=:prp)
-    draw!(pl_plots, plt; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
+    draw!(pl_plots, plt, scales_frc; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
 end
 
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
