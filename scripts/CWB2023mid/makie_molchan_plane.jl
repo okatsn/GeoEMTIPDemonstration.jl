@@ -278,6 +278,14 @@ function AlgebraOfGraphics.aesthetic_mapping(::Type{Hist}, ::AlgebraOfGraphics.N
     ])
 end
 
+function AlgebraOfGraphics.aesthetic_mapping(::Type{Density}, ::AlgebraOfGraphics.Normal)
+    AlgebraOfGraphics.dictionary([
+        1 => AlgebraOfGraphics.AesX,
+        :color => AlgebraOfGraphics.AesColor,
+        :linestyle => AlgebraOfGraphics.AesLineStyle,
+    ])
+end # https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/520
+
 f3 = Figure(; size=(800, 900))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
@@ -381,10 +389,13 @@ f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "Molchan
 
 f5res = (size=(800, 700),)
 f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
-densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
 
-ratedensity = data(P.table) * visual(Density; densitykwargs...) * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
-f5a = draw(ratedensity * mapping(:AlarmedRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
+densitykwargs = (bandwidth=0.01, boundary=(-0.1, 1.1)) # KEYNOTE: `visual(Density)` failed using AoG v0.8.0 and Makie v0.21.6 at the step of generate legend ("ERROR: MethodError: no method matching legend_elements(::Type{Plot{…}}, ::Dictionaries.Dictionary{Symbol, Any}, ::Dictionaries.Dictionary{Union{…}, Any})")
+
+ratedensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
+f5a = draw(ratedensity * mapping(:AlarmedRateForecasting),
+    scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag));
+    axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
 
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
