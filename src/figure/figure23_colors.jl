@@ -27,10 +27,10 @@ draw(plt, palettes = style)
 ```
 See the thread [Styling AlgebraOfGraphics boxplots](https://discourse.julialang.org/t/styling-algebraofgraphics-boxplots/65335/8).
 """
-function set_aog_pallete!(cref::ColormapRef)
+function set_aog_color_palette!(cref::ColormapRef)
     update_theme!(
         Theme(
-            palette=(color=cref.colormap,)
+            Color=(palette = cref.colormap)
         )
     )
 end

@@ -37,7 +37,7 @@ export viewgroup
 # figureplot
 include("figure/figure23_colors.jl")
 export ColorsFigure23
-export set_aog_pallete!
+export set_aog_color_palette!
 
 using OkMakieToolkits, CairoMakie, AlgebraOfGraphics, OkDataFrameTools, Statistics
 include("figure/figure23_traintestpart.jl")

@@ -345,8 +345,18 @@ function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, tar
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f50res...)
 
-    set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-    plt5 = draw!(f5[1, 1], aog_layer; axis=(f5sckwargs..., limits=(xylimits, xylimits)))
+    # # KEYNOTE: Set the theme palette the Figure 5 series
+    # This is equivalent to add `scales(Color=(; palette=CF23.trial.colormap))` in `draw!` as
+    # the third argument.
+    # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+    set_aog_color_palette!(CF23.trial)
+
+
+    plt5 = draw!(
+        f5[1, 1],
+        aog_layer,
+        ; axis=(f5sckwargs..., limits=(xylimits, xylimits))
+    )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
     Makie.save(target_file, f5)
     return f5
@@ -362,15 +372,13 @@ xymap = mapping(
 )
 
 visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8, labels=false)
-visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
+visual_scatter = visual(Scatter, markersize=5, alpha=0.3) * mapping(marker=:trial)
 
 
-molchan_all_frc = data(P.table) *
-                  mapping(marker=:trial, color=:trial) *
-                  mapping(layout=:prp => "filter") *
-                  xymap
+molchan_all_frc = data(P.table) * xymap * mapping(color=:trial) *
+                  mapping(layout=:prp => "filter")
 
-f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
+f5c = fig5_molchan_by_prp(molchan_all_frc * (visual_contour + visual_scatter) + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
 
