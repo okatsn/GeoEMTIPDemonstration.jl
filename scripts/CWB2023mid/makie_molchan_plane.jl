@@ -305,7 +305,8 @@ f3a = Figure(; size=(1000, 700))
 raincloudkwargs = (plot_boxplots=true, orientation=:vertical,
     cloud_width=0.85,
     clouds=hist,
-    markersize=1, jitter_width=0.02, # scatter plot settings
+    markersize=1, # scatter plot settings
+    # jitter_width=0.02, # FIXME: https://github.com/MakieOrg/Makie.jl/issues/3981
     boxplot_width=0.12, # boxplot settings
     gap=0, # gap between prp
 )
@@ -321,7 +322,7 @@ hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp => :
 
 histcomb_f3a = (hist3a) * mapping(row=:variable, col=:trial)
 # histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
-f3ap = draw!(f3a, histcomb_f3a, palettes=(; color=CF23.prp.to_color.(1:4)))
+f3ap = draw!(f3a, histcomb_f3a, scales(Color=(; palette=CF23.prp.to_color.(1:4))))
 label_DcHist!(f3a; right_label="variable", left_label="", bottom_label="probability density")
 # legend_f3!(f3a)
 f3a
