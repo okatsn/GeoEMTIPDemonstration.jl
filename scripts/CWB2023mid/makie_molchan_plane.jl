@@ -345,17 +345,14 @@ function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, tar
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f50res...)
 
-    # # KEYNOTE: Set the theme palette the Figure 5 series
-    # This is equivalent to add `scales(Color=(; palette=CF23.trial.colormap))` in `draw!` as
-    # the third argument.
+    # # KEYNOTE: `set_aog_color_palette!` should be deprecated since color aesthetic won't be "pulled in via the theme" after AoG v0.7.
     # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
-    set_aog_color_palette!(CF23.trial)
-
 
     plt5 = draw!(
         f5[1, 1],
         aog_layer,
-        ; axis=(f5sckwargs..., limits=(xylimits, xylimits))
+        scales(Color=(; palette=CF23.trial.colormap));
+        axis=(f5sckwargs..., limits=(xylimits, xylimits))
     )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
     Makie.save(target_file, f5)

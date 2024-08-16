@@ -14,23 +14,3 @@ function ColorsFigure23(P::Prep202304;
         ColormapRef(trialcolor, P.uniqtrial),
     )
 end
-
-
-"""
-You may alternatively do:
-```julia
-colors = ["#FC7808", "#8C00EC", "#107A78"]
-style = (color= colors, )
-df = (x=rand(["a", "b", "c"], 100), y=rand(100))
-plt = data(df) * mapping(:x, :y, color = :x) * visual(BoxPlot)
-draw(plt, palettes = style)
-```
-See the thread [Styling AlgebraOfGraphics boxplots](https://discourse.julialang.org/t/styling-algebraofgraphics-boxplots/65335/8).
-"""
-function set_aog_color_palette!(cref::ColormapRef)
-    update_theme!(
-        Theme(
-            Color=(palette = cref.colormap)
-        )
-    )
-end
