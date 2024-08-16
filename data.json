@@ -1,0 +1,6 @@
+{
+    "devcontainer_name": "GeoEMTIPDemonstration",
+    "service": "devgemtip",
+    "image": "gemtip",
+    "docker_compose_name": "jupyter-with-julia-gemtip"
+}

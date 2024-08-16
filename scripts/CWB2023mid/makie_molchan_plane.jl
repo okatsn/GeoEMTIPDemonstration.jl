@@ -83,6 +83,19 @@ transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,
 CF23 = ColorsFigure23(P)
 @assert isequal(P.table, df)
 
+# Scales
+# # This is new after AoG v0.7. Please refer https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+scales_prp = scales(Color=(; palette=CF23.prp.colormap, categories=CF23.prp.colortag))
+scales_trial = scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag))
+scales_frc = scales(;
+    bar_rainbowcolor=(
+        Color = (palette=CF23.frc.colormap, categories=CF23.frc.colortag)
+    )
+)
+
+
+
+
 # # Common functions for plots
 
 stryear(x) = "$x years"
@@ -105,7 +118,7 @@ end # Add left, top and bottom super labels.
 
 # # Fitting Degree
 # combined DataFrame for plot
-dfcb = combine(groupby(df, [:frc_ind, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
+dfcb = combine(groupby(df, [:frc_ind, :frc, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
 dropnanmissing!(dfcb)
 
 insertcols!(dfcb, :DCB_top => 1.0) # this is for plotting shaded area
@@ -114,23 +127,23 @@ insertcols!(dfcb, :DCB_bottom => -1.0)
 dcmeanstyle = (color=:red, linestyle=:solid)
 dcmedstyle = (color=:firebrick1, linestyle=:dash)
 
-f1 = Figure(; resolution=(800, 1000))
+f1 = Figure(; size=(800, 1000))
 pl_plots = f1[1, 1] = GridLayout()
 pl_legend = f1[2, 1] = GridLayout()
 
 # rowsize!(f1.layout, 1, Relative(3 / 4))
 let
-    rainbowbars = visual(BarPlot, colormap=CF23.frc.colormap, strokewidth=0.5, gap=0.3) *
-                  mapping(color=:frc_ind) *
+    rainbowbars = visual(BarPlot, strokewidth=0.5, gap=0.3) *
+                  mapping(color=:frc => scale(:bar_rainbowcolor)) * # color can only be categorical (not Continuous).
                   mapping(:frc_ind,
-                      :FittingDegreeMOM => identity => ylabel2) # WARN: it is not allowed to have integer grouping keys.
+                      :FittingDegreeMOM => identity => ylabel2)
 
     clevel1 = visual(Band; alpha=0.5, color=:gray69) * (mapping(:frc_ind, :DCB_bottom, :DCB_low) + mapping(:frc_ind, :DCB_bottom, :DCB_high))
     clevel2 = visual(ScatterLines; color=:black, linewidth=0.3, markersize=3) * (mapping(:frc_ind, :DCB_low) + mapping(:frc_ind, :DCB_high))
 
 
     plt = (data(dfcb) * (clevel1 + rainbowbars + clevel2)) * mapping(col=:trial, row=:prp)
-    draw!(pl_plots, plt; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
+    draw!(pl_plots, plt, scales_frc; axis=(; xlabel="", xticklabelrotation=0.2π, limits=(nothing, Tuple(extrema((vcat(dfcb.FittingDegreeMOM, dfcb.DCB_low, dfcb.DCB_high))) .+ [-0.05, +0.05]))))
 end
 
 label_DcHist!(pl_plots; left_label="fitting degree", right_label="", bottom_label="Forecasting Phase")
@@ -157,7 +170,7 @@ Legend(pl_legend[2, 1],
     labelsize=15,
     valign=:bottom, tellheight=true
 )
-f1
+display(f1)
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 
@@ -190,7 +203,7 @@ dfcb2 = @chain df begin
     # !!! warning
     #     It should be noticed that here I assume spatial TIP area is identical accross frc.
     transform(AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
-    transform(AsTable(Cols(r"DC\_summary")) => ByRow(nt -> diff(sort(nt))) => :DC_error)
+    transform(AsTable(Cols(r"DC\_summary")) => ByRow(nt -> diff(sort(collect(nt)))) => :DC_error)
     transform(:DC_error => [:DC_error_low, :DC_error_high])
 end
 
@@ -213,7 +226,7 @@ dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
 dropnanmissing!(dfcb2)
 
 
-f2 = Figure(; resolution=(800, 550))
+f2 = Figure(; size=(800, 550))
 let dfcb = dfcb2
     x = :prp => repus => xlabel2
     dcbars = (
@@ -249,7 +262,7 @@ let dfcb = dfcb2
     )
 end
 label_DcHist!(f2; left_label="fitting degree", right_label="", bottom_label="")
-f2
+display(f2)
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
 
@@ -267,7 +280,26 @@ f3histkwargs = (bins=-1.05:0.05:1.05,)
 f3histkwargs_a = (bins=-0.05:0.05:1.05,)
 
 # Figure 3:
-f3 = Figure(; resolution=(800, 900))
+
+# # Temporary treatment for aesthetic mapping issue
+# - https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+# - https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/521
+function AlgebraOfGraphics.aesthetic_mapping(::Type{Hist}, ::AlgebraOfGraphics.Normal)
+    AlgebraOfGraphics.dictionary([
+        1 => AlgebraOfGraphics.AesX,
+        :color => AlgebraOfGraphics.AesColor,
+    ])
+end
+
+function AlgebraOfGraphics.aesthetic_mapping(::Type{Density}, ::AlgebraOfGraphics.Normal)
+    AlgebraOfGraphics.dictionary([
+        1 => AlgebraOfGraphics.AesX,
+        :color => AlgebraOfGraphics.AesColor,
+        :linestyle => AlgebraOfGraphics.AesLineStyle,
+    ])
+end # https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/520
+
+f3 = Figure(; size=(800, 900))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
 dcmm = combine(groupby(dfn, [:trial, :prp]),
@@ -286,15 +318,16 @@ f3p = draw!(f3, histogram_all)
 label_DcHist!(f3; right_label="", bottom_label=L"\text{Fitting Degree } D_C")
 # legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
 legend_f3!(f3)
-f3
+display(f3)
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 # Figure 3a:
-f3a = Figure(; resolution=(1000, 700))
+f3a = Figure(; size=(1000, 700))
 raincloudkwargs = (plot_boxplots=true, orientation=:vertical,
     cloud_width=0.85,
     clouds=hist,
-    markersize=1, jitter_width=0.02, # scatter plot settings
+    markersize=1, # scatter plot settings
+    # jitter_width=0.02, # FIXME: https://github.com/MakieOrg/Makie.jl/issues/3981
     boxplot_width=0.12, # boxplot settings
     gap=0, # gap between prp
 )
@@ -310,10 +343,10 @@ hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp => :
 
 histcomb_f3a = (hist3a) * mapping(row=:variable, col=:trial)
 # histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
-f3ap = draw!(f3a, histcomb_f3a, palettes=(; color=CF23.prp.to_color.(1:4)))
+f3ap = draw!(f3a, histcomb_f3a, scales_prp)
 label_DcHist!(f3a; right_label="variable", left_label="", bottom_label="probability density")
 # legend_f3!(f3a)
-f3a
+display(f3a)
 Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 
 
@@ -329,12 +362,19 @@ Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 xylimits = (-0.05, 1.05)
 
 function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, target_file)
-    f50res = (resolution=(800, 700),)
+    f50res = (size=(800, 700),)
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f50res...)
 
-    set_aog_pallete!(CF23.trial) # The colors for the Figure 5 series
-    plt5 = draw!(f5[1, 1], aog_layer; axis=(f5sckwargs..., limits=(xylimits, xylimits)))
+    # # KEYNOTE: `set_aog_color_palette!` should be deprecated since color aesthetic won't be "pulled in via the theme" after AoG v0.7.
+    # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+
+    plt5 = draw!(
+        f5[1, 1],
+        aog_layer,
+        scales_trial;
+        axis=(f5sckwargs..., limits=(xylimits, xylimits))
+    )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
     Makie.save(target_file, f5)
     return f5
@@ -350,30 +390,37 @@ xymap = mapping(
 )
 
 visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8, labels=false)
-visual_scatter = visual(Scatter, markersize=5, alpha=0.3)
+visual_scatter = visual(Scatter, markersize=5, alpha=0.3) * mapping(marker=:trial)
 
 
-molchan_all_frc = data(P.table) *
-                  mapping(marker=:trial, color=:trial) *
-                  mapping(layout=:prp => "filter") *
-                  xymap
+molchan_all_frc = data(P.table) * xymap * mapping(color=:trial) *
+                  mapping(layout=:prp => "filter")
 
-f5c = fig5_molchan_by_prp(molchan_all_frc * visual_contour + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
+f5c = fig5_molchan_by_prp(molchan_all_frc * (visual_contour + visual_scatter) + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
+display(f5c)
+display(f5s)
 
-f5res = (resolution=(800, 700),)
+f5res = (size=(800, 700),)
 f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
-densitykwargs = (alpha=0.6, bins=-0.05:0.04:1.05, bandwidth=0.01, boundary=(-0.1, 1.1))
 
-ratedensity = data(P.table) * visual(Density; densitykwargs...) * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
-f5a = draw(ratedensity * mapping(:AlarmedRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
+densitykwargs = (bandwidth=0.01, boundary=(-0.1, 1.1)) # KEYNOTE: `visual(Density)` failed using AoG v0.8.0 and Makie v0.21.6 at the step of generate legend ("ERROR: MethodError: no method matching legend_elements(::Type{Plot{…}}, ::Dictionaries.Dictionary{Symbol, Any}, ::Dictionaries.Dictionary{Union{…}, Any})")
+
+ratedensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
+f5a = draw(ratedensity * mapping(:AlarmedRateForecasting),
+    scales_trial;
+    axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
 
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
 
-f5b = draw(ratedensity * mapping(:MissingRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
+f5b = draw(ratedensity * mapping(:MissingRateForecasting), scales_trial; axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
+
+
+display(f5a)
+display(f5b)
 
 # KEYNOTE:
 # - When scatter points concentrates at one or a few values, RainClouds are ugly, and Density & Density-related (e.g., Violin) goes wrong and misleading.
