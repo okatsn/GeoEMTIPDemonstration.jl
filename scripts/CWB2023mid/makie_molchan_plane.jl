@@ -83,6 +83,12 @@ transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y,
 CF23 = ColorsFigure23(P)
 @assert isequal(P.table, df)
 
+# Scales
+# # This is new after AoG v0.7. Please refer https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+scales_prp = scales(Color=(; palette=CF23.prp.colormap, categories=CF23.prp.colortag))
+scales_trial = scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag))
+
+
 # # Common functions for plots
 
 stryear(x) = "$x years"
@@ -157,7 +163,7 @@ Legend(pl_legend[2, 1],
     labelsize=15,
     valign=:bottom, tellheight=true
 )
-f1
+display(f1)
 Makie.save("FittingDegree_barplot_colored_by=frc.png", f1)
 
 
@@ -249,7 +255,7 @@ let dfcb = dfcb2
     )
 end
 label_DcHist!(f2; left_label="fitting degree", right_label="", bottom_label="")
-f2
+display(f2)
 Makie.save("FittingDegree_barplot_mono_color_with=nanmean.png", f2)
 
 
@@ -305,7 +311,7 @@ f3p = draw!(f3, histogram_all)
 label_DcHist!(f3; right_label="", bottom_label=L"\text{Fitting Degree } D_C")
 # legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
 legend_f3!(f3)
-f3
+display(f3)
 Makie.save("FittingDegree_hist_overall_mono_color.png", f3)
 
 # Figure 3a:
@@ -330,10 +336,10 @@ hist3a = data(df3a) * visual(RainClouds; raincloudkwargs...) * mapping(:prp => :
 
 histcomb_f3a = (hist3a) * mapping(row=:variable, col=:trial)
 # histcomb_f3a = (hist3a + mean3a + median3a) * mapping(row=:variable, col=:trial)
-f3ap = draw!(f3a, histcomb_f3a, scales(Color=(; palette=CF23.prp.to_color.(1:4))))
+f3ap = draw!(f3a, histcomb_f3a, scales_prp)
 label_DcHist!(f3a; right_label="variable", left_label="", bottom_label="probability density")
 # legend_f3!(f3a)
-f3a
+display(f3a)
 Makie.save("MissingRateAlarmedRate_rainclouds_over_prp_trial.png", f3a)
 
 
@@ -359,7 +365,7 @@ function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, tar
     plt5 = draw!(
         f5[1, 1],
         aog_layer,
-        scales(Color=(; palette=CF23.trial.colormap));
+        scales_trial;
         axis=(f5sckwargs..., limits=(xylimits, xylimits))
     )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
@@ -386,6 +392,8 @@ molchan_all_frc = data(P.table) * xymap * mapping(color=:trial) *
 f5c = fig5_molchan_by_prp(molchan_all_frc * (visual_contour + visual_scatter) + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
+display(f5c)
+display(f5s)
 
 f5res = (size=(800, 700),)
 f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
@@ -394,14 +402,18 @@ densitykwargs = (bandwidth=0.01, boundary=(-0.1, 1.1)) # KEYNOTE: `visual(Densit
 
 ratedensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
 f5a = draw(ratedensity * mapping(:AlarmedRateForecasting),
-    scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag));
+    scales_trial;
     axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
 
 # AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
 
-f5b = draw(ratedensity * mapping(:MissingRateForecasting); axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
+f5b = draw(ratedensity * mapping(:MissingRateForecasting), scales_trial; axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
 Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
+
+
+display(f5a)
+display(f5b)
 
 # KEYNOTE:
 # - When scatter points concentrates at one or a few values, RainClouds are ugly, and Density & Density-related (e.g., Violin) goes wrong and misleading.
