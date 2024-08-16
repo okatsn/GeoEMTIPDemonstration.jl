@@ -267,6 +267,17 @@ f3histkwargs = (bins=-1.05:0.05:1.05,)
 f3histkwargs_a = (bins=-0.05:0.05:1.05,)
 
 # Figure 3:
+
+# # Temporary treatment for aesthetic mapping issue
+# - https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+# - https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/521
+function AlgebraOfGraphics.aesthetic_mapping(::Type{Hist}, ::AlgebraOfGraphics.Normal)
+    AlgebraOfGraphics.dictionary([
+        1 => AlgebraOfGraphics.AesX,
+        :color => AlgebraOfGraphics.AesColor,
+    ])
+end
+
 f3 = Figure(; size=(800, 900))
 dfn = deepcopy(df);
 dropnanmissing!(dfn)
@@ -282,7 +293,6 @@ dcmedian = data(dcmm) * visual(VLines; ymin=0, dcmedstyle...) * mapping(:DC_medi
 
 histogram_all = (dchist + dcmean + dcmedian) * mapping(col=:trial, row=:prp)
 
-# CHECKPOINT
 f3p = draw!(f3, histogram_all)
 label_DcHist!(f3; right_label="", bottom_label=L"\text{Fitting Degree } D_C")
 # legend!(f3[0, end], f3p; valign = :top) # Nothing happend!
