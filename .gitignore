@@ -4,3 +4,4 @@
 /docs/build/
 /*.png
 **/temp/
+Manifest.toml
