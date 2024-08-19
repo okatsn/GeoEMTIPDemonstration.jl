@@ -32,11 +32,18 @@ filter!(AsTable(:) => filter_intersect, df24)
 
 
 # # Combine the two table
+
+# Pre-process for consistency in columns of two datasets.
+
 # df23 is of older format thus missing in some columns.
-missingcols = setdiff(Set(names(df24)), Set(names(df23)))
-for c in missingcols
-    insertcols!(df23, c => missing)
-end
+# missingcols = setdiff(Set(names(df24)), Set(names(df23)))
+# for c in missingcols
+#     insertcols!(df23, c => missing)
+# end
+select!(df24, names(df23))
+# KEYNOTE: Because later in the script `dropmissing!` is used a couple of times, which results in entirely remove the 2023 data if those unavailable columns are added and filled with missing values, I do discard columns of 2024 data that was not available in 2023 data instead.
+
+
 
 # combine df23 and df24
 insertcols!(df23, :trial => "use S, K")
@@ -94,7 +101,7 @@ islinf(x) = false
 
 df = ifelse.(islinf.(df), NaN, df)
 
-dropnanmissing!(df, Not(r"NEQ", missingcols...))
+dropnanmissing!(df, Not(r"NEQ"))
 
 
 P = prep202304!(df)
