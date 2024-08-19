@@ -41,6 +41,22 @@ neq_summary(df) = @chain df begin
     combine([:NEQ_min, :NEQ_max] => ((a, b) -> extrema(vcat(a, b))) => :NEQ_range)
 end
 
-
 neq_summary(df23)
 neq_summary(df24)
+
+
+# # Combine the two table
+# df23 is of older format thus missing in some columns.
+missingcols = setdiff(Set(names(df24)), Set(names(df23)))
+for c in missingcols
+    insertcols!(df23, c => missing)
+end
+
+# combine df23 and df24
+insertcols!(df23, :trial => "use S, K")
+insertcols!(df24, :trial => "use S, K, FIM, SEP")
+
+df = DataFrame()
+for dfi in [df23, df24]
+    append!(df, dfi; promote=true)
+end
