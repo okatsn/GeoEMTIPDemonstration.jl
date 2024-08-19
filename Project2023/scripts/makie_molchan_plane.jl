@@ -10,7 +10,7 @@ import NaNMath: mean as nanmean
 using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using OkDataFrameTools
-using GeoEMTIPDemonstration
+using GeoEMTIPDemonstration # in Project2023 pkg> `add ../../workspace`
 using MolchanCB
 using Dates
 
