@@ -1,4 +1,5 @@
 # https://juliadatascience.io/recipe_df
+# KEYNOTE: `using GeoEMTIPDemonstration` and then `activate Project2023`.
 using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
@@ -10,7 +11,6 @@ import NaNMath: mean as nanmean
 using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using OkDataFrameTools
-using GeoEMTIPDemonstration
 using MolchanCB
 using Dates
 
