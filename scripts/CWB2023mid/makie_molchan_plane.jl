@@ -10,7 +10,6 @@ import NaNMath: mean as nanmean
 using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using OkDataFrameTools
-using CWBProjectSummaryDatasets
 using GeoEMTIPDemonstration
 using MolchanCB
 using Dates

@@ -194,8 +194,8 @@ uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 version = "0.10.14"
 
 [[deps.CWBProjectSummaryDatasets]]
-deps = ["SmallDatasetMaker", "Test"]
-git-tree-sha1 = "16a4083e7eac8e87b2e75557bd7c4d4e457874e6"
+deps = ["OkFiles", "SmallDatasetMaker", "Test"]
+path = "/home/jovyan/.julia/dev/CWBProjectSummaryDatasets"
 uuid = "b38d3104-45cc-42ed-bfee-2aefedd5b40b"
 version = "0.6.3"
 
