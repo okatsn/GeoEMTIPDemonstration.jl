@@ -94,7 +94,7 @@ islinf(x) = false
 
 df = ifelse.(islinf.(df), NaN, df)
 
-dropnanmissing!(df, Not(r"NEQ"))
+dropnanmissing!(df, Not(r"NEQ", missingcols...))
 
 
 P = prep202304!(df)
