@@ -10,7 +10,6 @@ using Printf
 import NaNMath: mean as nanmean
 # using Revise # using Revise through VSCode settings
 using CWBProjectSummaryDatasets
-using GeoEMTIPDemonstration
 using OkMakieToolkits
 using Dates
 using OkFiles
@@ -38,7 +37,7 @@ station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInf
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
-twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
+twshp = Shapefile.Table(dir_map("COUNTY_MOI_1070516.shp"))
 
 twmap = data(twshp) * mapping(:geometry) * visual(
             Choropleth,
