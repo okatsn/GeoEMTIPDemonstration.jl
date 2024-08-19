@@ -1,5 +1,5 @@
 # https://juliadatascience.io/recipe_df
-# KEYNOTE: `using GeoEMTIPDemonstration` and then `activate Project2023`.
+using GeoEMTIPDemonstration
 using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics

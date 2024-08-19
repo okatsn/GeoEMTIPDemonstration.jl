@@ -1,4 +1,4 @@
-# KEYNOTE: `using GeoEMTIPDemonstration` and then `activate Project2023`.
+using GeoEMTIPDemonstration
 using DataFrames, CSV
 using AlgebraOfGraphics
 # import CairoMakie
