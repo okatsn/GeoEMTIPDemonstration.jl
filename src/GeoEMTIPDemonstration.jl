@@ -14,9 +14,8 @@ include("to_days.jl")
 include("dtstr2nday.jl")
 export dtstr2nday
 
-using DrWatson
 include("projectdir.jl")
-export dir_cwb2023mid
+export dir_map
 
 include("only1field.jl")
 export only1field, only1key
