@@ -1,3 +1,4 @@
+using GeoEMTIPDemonstration
 using DataFrames, CSV
 using AlgebraOfGraphics
 # import CairoMakie
@@ -10,7 +11,6 @@ using Printf
 import NaNMath: mean as nanmean
 # using Revise # using Revise through VSCode settings
 using CWBProjectSummaryDatasets
-using GeoEMTIPDemonstration
 using OkMakieToolkits
 using Dates
 using OkFiles
@@ -34,11 +34,15 @@ mkpath(targetdir())
 
 # SETME
 train_yr = Year(3) # this is for earthquake plot
+df_ge = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GE_3yr_180d_500md_2023A10_compat_1")
+df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_GM_3yr_180d_500md_2023A10_compat_1")
+df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
+
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
-catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
-twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
+catalog = CWBProjectSummaryDatasets.dataset("EventMag5", "Catalog")
+twshp = Shapefile.Table(dir_map("COUNTY_MOI_1070516.shp"))
 
 twmap = data(twshp) * mapping(:geometry) * visual(
             Choropleth,
@@ -48,18 +52,19 @@ twmap = data(twshp) * mapping(:geometry) * visual(
             strokewidth=0.75
         )
 
-# palletes for `draw` of AlgebraOfGraphic (AoG)
-# KEYNOTE:
-# - For categorical array, it should be a vector.
-# - For continuous array, use cgrad (e.g., `cgrad(:Paired_4)`).
-# - AoG may ignore the `colormap` keyword, because AoG may supports multiple colormaps. See the [issue](https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/329).
-# - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
-# - NOTE: `palettes` is deprecated after AoG v0.7. One should use ` scales(Color=(; palette= ...), Layout=(; palette= ...))` instead.
+# Merge DataFrame
 
+tagdfs = Dict(
+    "GE" => df_ge,
+    "GM" => df_gm,
+    "MIX" => df_mix
+);
 
-# Load table (please pull data from gemstiptree)
-df = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_2024event403_compat_1")
-insertcols!(df, :trial => "mix")
+for (tag, df) in tagdfs
+    insertcols!(df, :trial => tag)
+end
+
+df = vcat(df_ge, df_gm, df_mix)
 
 
 
@@ -83,8 +88,7 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
-# TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
+
 
 # Catalog
 inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
@@ -92,7 +96,7 @@ filter!(:date => inrange(extrema(df.dt)), catalog)
 filter!(:ML => (x -> x ≥ 5.0), catalog)
 transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
 
-tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
+tkformat = v -> LaTeXString.(string.(v) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
 
 f = with_theme(resolution=(600, 700)) do
@@ -114,7 +118,7 @@ f = with_theme(resolution=(600, 700)) do
 
     scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
+        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=11)
 
     MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
@@ -200,7 +204,7 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
-# dfg1 = groupdfs[4]
+# dfg1 = groupdfs[5]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
@@ -232,10 +236,12 @@ function eqkprb_plot(dfg1)
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
     # linecolors = :matter
     # in palettes: color=linecolors,
-    pprob = draw!(f[:, :], probplt, scales(Color=(; palette=WGLMakie.categorical_colors(:Set1_4, 4)),
-        Layout=(; palette=[(i, 1) for i in 1:lenlayout]) # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
-        # What is a palette: https://aog.makie.org/stable/gallery/gallery/scales/custom_scales/#custom_scales
-    ))
+    pprob = draw!(f[:, :], probplt;
+        palettes=(;
+            color=WGLMakie.categorical_colors(:Set1_4, 4),
+            layout=[(i, 1) for i in 1:lenlayout] # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
+        )
+    )
 
     Label(f[:, 0], "probability around epicenters", tellheight=false, rotation=0.5π)
     legend!(f[end+1, :], pprob; tellwidth=false, tellheight=true, titleposition=:left, orientation=:horizontal)
@@ -243,7 +249,7 @@ function eqkprb_plot(dfg1)
     # palettes=(; color=CF23.prp.to_color.(1:4))
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
-    rightaxs = OkMakieToolkits.twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    rightaxs = twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
     draw!.(rightaxs, eqkplts)
 
     lenax = length(leftaxs)
@@ -299,15 +305,15 @@ function eqkprb_plot(dfg1)
 
     scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
     text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 4), fontsize=15)
+        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
 
     colsize!(f.layout, 1, Relative(0.6))
     colgap!(f.layout, 1, Relative(0.02))
     # good resource: https://juliadatascience.io/makie_layouts
 
     r = 0.65
-    xlims!(ga, extrema(get_value.(dfg.eventLon)) .+ (-r, +r)...)
-    ylims!(ga, extrema(get_value.(dfg.eventLat)) .+ (-r, +r)...)
+    xlims!(extrema(get_value.(dfg.eventLon)) .+ (-r, +r)...)
+    ylims!(extrema(get_value.(dfg.eventLat)) .+ (-r, +r)...)
 
     f
 end
@@ -317,7 +323,7 @@ end
 
 
 for dfg in groupdfs
-    with_theme(size=(1000, 700),
+    with_theme(resolution=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
     ) do
