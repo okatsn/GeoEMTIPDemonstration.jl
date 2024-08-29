@@ -72,14 +72,6 @@ end
 # SETME: Parameter settings:
 whichalpha = 0.32
 
-# # A dictionary function for efficiently obtain Molchan confidence boundary.
-# `molchancb(N, alpha)` for N > 20 is slow (julia is slow in handling BigInt).
-# As a result, it is necessary to build a dictionary function for all possible NEQ to avoid
-# repeated calculation.
-uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
-
-
-
 uniqueonly(x) = x |> unique |> only
 
 
