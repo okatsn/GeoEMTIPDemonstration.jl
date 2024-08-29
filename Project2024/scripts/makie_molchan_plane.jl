@@ -78,9 +78,7 @@ whichalpha = 0.32
 # repeated calculation.
 uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
 
-DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.32]])
 
-getalms(α, neq) = DCB[α][neq]
 
 uniqueonly(x) = x |> unique |> only
 

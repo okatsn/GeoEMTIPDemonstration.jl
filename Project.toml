@@ -1,7 +1,7 @@
 name = "GeoEMTIPDemonstration"
 uuid = "ebde9838-6584-4548-b79e-429a239baf90"
 authors = ["okatsn <okatsn@gmail.com> and contributors"]
-version = "0.0.1"
+version = "0.0.2"
 
 [deps]
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
