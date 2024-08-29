@@ -1,5 +1,4 @@
 # Changelog
 
-## v0.1.0
-
-  * Initiating the project.
+## v0.0.1
+  * Works for "Project2024".
