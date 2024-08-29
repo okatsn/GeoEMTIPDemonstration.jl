@@ -1,7 +1,7 @@
 """
 A dictionary to cache computed binomial coefficients.
 """
-const binomial_cache = Dict{Tuple{Float64,Int},Float64}()
+const binomial_cache = Dict{Tuple{Float64,Int},Vector{Float64}}()
 
 
 """
@@ -24,7 +24,7 @@ function getdcb(α, neq; cache=true, applybig=40)
     fdcb = 1.0 .- alarmed .- missed
 
     if cache
-        binomial_cache[(n, k)] = fdcb
+        binomial_cache[(α, neq)] = fdcb
     end
     return fdcb
 end
