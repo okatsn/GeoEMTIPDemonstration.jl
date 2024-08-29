@@ -52,8 +52,8 @@ select!(df24a, names(df23))
 
 # combine df23 and df24
 insertcols!(df23, :trial => "use S, K")
-insertcols!(df24, :trial => "use S, K, FIM, SEP")
-insertcols!(df24a, :trial => "use S, K, FIM")
+insertcols!(df24, :trial => "use S, K, SEP, FIM")
+insertcols!(df24a, :trial => "use S, K, SEP")
 df = DataFrame()
 for dfi in [df23, df24, df24a]
     append!(df, dfi; promote=true)
