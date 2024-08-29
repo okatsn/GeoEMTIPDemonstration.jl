@@ -13,10 +13,13 @@ using OkMakieToolkits
 using OkDataFrameTools
 using MolchanCB
 using Dates
+CWBProjectSummaryDatasets.datasets()
 
 df23 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10")
 
 df24 = CWBProjectSummaryDatasets.dataset("Summary_JointStation-J28-1qx", "PhaseTest_3yr_173d_J28")
+
+df24a = CWBProjectSummaryDatasets.dataset("Summary_JointStation-A19-4Dr", "PhaseTest_3yr_173d_A19")
 
 
 # # Keep only data where frc and prp labels matching the other dataset
@@ -29,6 +32,7 @@ end
 
 filter!(AsTable(:) => filter_intersect, df23)
 filter!(AsTable(:) => filter_intersect, df24)
+filter!(AsTable(:) => filter_intersect, df24a)
 
 
 # # Combine the two table
@@ -41,6 +45,7 @@ filter!(AsTable(:) => filter_intersect, df24)
 #     insertcols!(df23, c => missing)
 # end
 select!(df24, names(df23))
+select!(df24a, names(df23))
 # KEYNOTE: Because later in the script `dropmissing!` is used a couple of times, which results in entirely remove the 2023 data if those unavailable columns are added and filled with missing values, I do discard columns of 2024 data that was not available in 2023 data instead.
 
 
@@ -48,9 +53,9 @@ select!(df24, names(df23))
 # combine df23 and df24
 insertcols!(df23, :trial => "use S, K")
 insertcols!(df24, :trial => "use S, K, FIM, SEP")
-
+insertcols!(df24a, :trial => "use S, K, FIM")
 df = DataFrame()
-for dfi in [df23, df24]
+for dfi in [df23, df24, df24a]
     append!(df, dfi; promote=true)
 end
 
@@ -73,8 +78,6 @@ end
 whichalpha = 0.32
 
 uniqueonly(x) = x |> unique |> only
-
-
 
 fdperc = "$(Int(round((1-whichalpha) * 100)))%"
 
