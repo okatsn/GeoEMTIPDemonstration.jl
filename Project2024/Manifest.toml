@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.4"
+julia_version = "1.10.5"
 manifest_format = "2.0"
 project_hash = "06fa2f116d85d8bc3f37fed6a6d123b8e49caf37"
 
@@ -120,9 +120,9 @@ version = "0.10.14"
 
 [[deps.CWBProjectSummaryDatasets]]
 deps = ["OkFiles", "SmallDatasetMaker", "Test"]
-path = "/home/jovyan/.julia/dev/CWBProjectSummaryDatasets"
+git-tree-sha1 = "4b42d66ae6e8e2244e5d53decaf551d47f192204"
 uuid = "b38d3104-45cc-42ed-bfee-2aefedd5b40b"
-version = "0.6.3"
+version = "0.7.0"
 
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
@@ -1685,7 +1685,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
