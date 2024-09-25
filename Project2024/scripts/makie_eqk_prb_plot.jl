@@ -10,6 +10,7 @@ using Printf
 import NaNMath: mean as nanmean
 # using Revise # using Revise through VSCode settings
 using GeoEMTIPDemonstration
+using Project2024
 using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using Dates
@@ -38,6 +39,7 @@ station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInf
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 # TODO: Load all joint-station data here:
+Project2024.load_all_trials()
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
 
