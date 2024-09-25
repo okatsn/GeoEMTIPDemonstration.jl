@@ -39,7 +39,13 @@ station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInf
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 # TODO: Load all joint-station data here:
-Project2024.load_all_trials()
+
+df = DataFrame()
+for df0 in Project2024.load_all_trials(PhaseTestEQK())
+    append!(df, df0; cols=:intersect)
+end
+
+[df0 for df0 in Project2024.load_all_trials(PhaseTestEQK())]
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
 
@@ -66,14 +72,6 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 # - AoG may ignore the `colormap` keyword, because AoG may supports multiple colormaps. See the [issue](https://github.com/MakieOrg/AlgebraOfGraphics.jl/issues/329).
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
 # - NOTE: `palettes` is deprecated after AoG v0.7. One should use ` scales(Color=(; palette= ...), Layout=(; palette= ...))` instead.
-
-
-# Load table (please pull data from gemstiptree)
-df = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_2024event403_compat_1")
-insertcols!(df, :trial => "mix")
-
-
-
 
 # Categorize :eventId
 # - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.

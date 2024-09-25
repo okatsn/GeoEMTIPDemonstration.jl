@@ -16,7 +16,7 @@ using Dates
 using Project2024
 CWBProjectSummaryDatasets.datasets()
 
-(df23, df24a, df24) = Project2024.load_all_trials()
+(df23, df24a, df24) = Project2024.load_all_trials(PhaseTest())
 
 
 # # Keep only data where frc and prp labels matching the other dataset

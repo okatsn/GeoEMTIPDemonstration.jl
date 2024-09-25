@@ -1,4 +1,5 @@
 module Project2024
+using GeoEMTIPDemonstration
 using CWBProjectSummaryDatasets, DataFrames
 include("load_data.jl")
 
