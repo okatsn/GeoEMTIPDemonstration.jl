@@ -13,13 +13,10 @@ using OkMakieToolkits
 using OkDataFrameTools
 using MolchanCB
 using Dates
+using Project2024
 CWBProjectSummaryDatasets.datasets()
 
-df23 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10")
-
-df24 = CWBProjectSummaryDatasets.dataset("Summary_JointStation-J28-1qx", "PhaseTest_3yr_173d_J28")
-
-df24a = CWBProjectSummaryDatasets.dataset("Summary_JointStation-A19-4Dr", "PhaseTest_3yr_173d_A19")
+(df23, df24a, df24) = load_all_trials()
 
 
 # # Keep only data where frc and prp labels matching the other dataset
@@ -51,9 +48,6 @@ select!(df24a, names(df23))
 
 
 # combine df23 and df24
-insertcols!(df23, :trial => "use S, K")
-insertcols!(df24, :trial => "use S, K, SEP, FIM")
-insertcols!(df24a, :trial => "use S, K, SEP")
 df = DataFrame()
 for dfi in [df23, df24, df24a]
     append!(df, dfi; promote=true)

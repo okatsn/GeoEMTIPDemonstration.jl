@@ -1,5 +1,7 @@
 module Project2024
+using CWBProjectSummaryDatasets, DataFrames
+include("load_data.jl")
+export load_all_trials
 
-greet() = print("Hello World!")
 
 end # module Project2024
