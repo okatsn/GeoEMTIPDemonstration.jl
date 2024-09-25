@@ -20,7 +20,7 @@ using CategoricalArrays
 using Clustering
 using EventSpaceAlgebra
 
-targetdir(args...) = joinpath("temp/2022-2023", args...)
+targetdir(args...) = joinpath("temp/2024", args...)
 mkpath(targetdir())
 
 # !!! note Map plot
@@ -38,6 +38,13 @@ station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInf
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
+
+# Catalog of MagTIP type:
+@chain catalog begin
+    select!(Not(:DateTime), :DateTime => :DateTimeStr)
+    transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false)
+end
+
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
 twmap = data(twshp) * mapping(:geometry) * visual(
@@ -88,12 +95,12 @@ filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
 
 # Catalog
 inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:date => inrange(extrema(df.dt)), catalog)
-filter!(:ML => (x -> x ≥ 5.0), catalog)
-transform!(catalog, [:date, :time] => ByRow((x, y) -> datetime2julian(x + y)) => :dt_julian)
+filter!(:time => inrange(extrema(df.dt)), catalog)
+filter!(:Mag => (x -> x ≥ 5.0), catalog)
+transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
 
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
-magtransform = x -> 7 + (x - 5) * 5 # transform ML to markersize on the plot
+magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
 
 f = with_theme(resolution=(600, 700)) do
     f = Figure()
@@ -108,7 +115,7 @@ f = with_theme(resolution=(600, 700)) do
         backgroundcolor=:white,
         limits=((118, 123.6), nothing))
 
-    catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:ML => magtransform) * mapping(:lon, :lat)
+    catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:Mag => magtransform) * mapping(:Lon, :Lat)
     gd = draw!(eqkmap, catalogplot)
     colorbar!(f[0, 1:10], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
 
@@ -116,7 +123,7 @@ f = with_theme(resolution=(600, 700)) do
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
         align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
-    MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
+    MLrefs = catalog.Mag |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
     MLrefy = range(21.4, 23, length=length(MLrefs)) |> collect
 
