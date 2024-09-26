@@ -205,6 +205,7 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 # CHECKPOINT:
 # - remove any eventTime_x
+# FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
 
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
