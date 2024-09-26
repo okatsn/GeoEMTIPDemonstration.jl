@@ -17,15 +17,15 @@ This is a package specifically for TIP summaries demonstration.
     - Do not include any secrets or sensitive information in the comment.
 
 
-## Create sub-projects
+## Creating Sub-Projects
 
-Every plotting scripts should not be carried out in the `GeoEMTIPDemonstration`; one should activate a new environment for a task.
+Plotting scripts should not be executed directly within `GeoEMTIPDemonstration`; instead, a new environment should be activated for each task.
 
-For example, here is the step-by-step instruction in creating a plotting task:
+Here's a step-by-step guide for setting up a plotting task:
 
-- `pkg> activate Project20xx`: create an environment of `Project20xx` for the plot demonstration of the year 20xx.
-- `pkg> add .`: Add current repository (i.e., `GeoEMTIPDemonstration`) as the dependency.
-> Noted that in `Manifest.toml`, under the dependency of `GeoEMTIPDemonstration` it shows `repo-url = ".."`, denoting that this dependency is located at the parent directory relative to `Project20xx`.
+- `pkg> activate Project20xx`: Activate the environment for `Project20xx`, which corresponds to the plot demonstration for the year 20xx.
+- `pkg> add .`: Add the current repository (i.e., `GeoEMTIPDemonstration`) as a dependency for `Project20xx`.
+> Note: In `Manifest.toml` of `Project20xx`, under the dependency for `GeoEMTIPDemonstration`, you will see `repo-url = ".."`, indicating that this dependency is located in the parent directory relative to `Project20xx`.
 
 
 
