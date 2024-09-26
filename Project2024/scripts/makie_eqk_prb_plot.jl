@@ -10,6 +10,7 @@ using Printf
 import NaNMath: mean as nanmean
 # using Revise # using Revise through VSCode settings
 using GeoEMTIPDemonstration
+using Project2024
 using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using Dates
@@ -33,9 +34,18 @@ mkpath(targetdir())
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 # SETME
-train_yr = Year(3) # this is for earthquake plot
+train_yr = Year(3) # this is for earthquake plot # FIXME: should be totally removed
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
+
+# TODO: Load all joint-station data here:
+
+df = DataFrame()
+for df0 in Project2024.load_all_trials(PhaseTestEQK())
+    append!(df, df0; cols=:intersect)
+end
+
+[df0 for df0 in Project2024.load_all_trials(PhaseTestEQK())]
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
 
@@ -63,14 +73,6 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
 # - NOTE: `palettes` is deprecated after AoG v0.7. One should use ` scales(Color=(; palette= ...), Layout=(; palette= ...))` instead.
 
-
-# Load table (please pull data from gemstiptree)
-df = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_2024event403_compat_1")
-insertcols!(df, :trial => "mix")
-
-
-
-
 # Categorize :eventId
 # - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
 # - Try the followings to figure out:
@@ -93,10 +95,12 @@ transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)
 # TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
 filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
 
-# Catalog
+# Plot Catalog
+# TODO: Plot events of training and forecasting period separately, where
 inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:time => inrange(extrema(df.dt)), catalog)
-filter!(:Mag => (x -> x ≥ 5.0), catalog)
+filter!(:time => inrange(extrema(df.dt)), catalog) # FIXME: This filter might need be revised
+filter!(:Mag => (x -> x ≥ 5.0), catalog) # FIXME: Make all catalog processing in the same section
+
 transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
 
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
@@ -137,17 +141,14 @@ f = with_theme(resolution=(600, 700)) do
     # end
     display(f)
     f
-end
+end # TODO: Modify the smallest circle size and scale size, to make ML 5 event apparent.
 
 Makie.save("Catalog_M5_map.png", f)
 
 
 
-# f
-
-
-# We show only cases after 2022 in the final report of 2023 (it is too much to show all)
-filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df)
+# # KEYNOTE: We show only cases after 2022 (it is too much to show all)
+filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
@@ -204,6 +205,7 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 # CHECKPOINT:
 # - remove any eventTime_x
+# FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
 
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial

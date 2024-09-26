@@ -1,7 +1,7 @@
 name = "GeoEMTIPDemonstration"
 uuid = "ebde9838-6584-4548-b79e-429a239baf90"
 authors = ["okatsn <okatsn@gmail.com> and contributors"]
-version = "0.0.3"
+version = "0.1.0"
 
 [deps]
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
@@ -14,12 +14,12 @@ OkMakieToolkits = "4e74b330-6242-4c7a-bc50-5dcf56e2fdec"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-AlgebraOfGraphics = "0.8.0"
-CairoMakie = "0.12.6"
-DataFrames = "1.6.1"
+AlgebraOfGraphics = "0.8.10"
+CairoMakie = "0.12.11"
+DataFrames = "1.7.0"
 MolchanCB = "0.1.1"
 OkDataFrameTools = "0.2.0"
-OkMakieToolkits = "0.10.2"
+OkMakieToolkits = "0.10.3"
 julia = "1.10"
 
 [extras]

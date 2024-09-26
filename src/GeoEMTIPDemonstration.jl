@@ -1,5 +1,10 @@
 module GeoEMTIPDemonstration
 
+include("datasettypes.jl")
+export TrialTable, SummaryJointStation # abstract
+export PhaseTest, PhaseTestEQK # concrete
+
+
 using MolchanCB
 include("getdcb.jl")
 export getdcb
