@@ -49,8 +49,6 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
 
-# TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
 
 
 
@@ -105,13 +103,13 @@ transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
 
-# Plot Catalog
+# Plot Catalog # WARN: catalog is detached from df
 # TODO: Plot events of training and forecasting period separately,
 
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
 
-f = with_theme(resolution=(600, 700)) do
+f = with_theme(size=(600, 700)) do
     f = Figure()
     eqkmap = Axis(f[1, 0:11],
         # xticks=119.5:0.5:122.0,
@@ -208,17 +206,33 @@ event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 
 transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
-# CHECKPOINT:
-# - remove any eventTime_x
+
+
+
 # FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
+
+frc_days = Day(173) # FIXME: Temp
 
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
 # dfg1 = groupdfs[4]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
+
+    tmp = @chain groupby(dfg, :eventId) begin
+        combine(:dt => extrema => :t0t1)
+        transform!(:t0t1 => ByRow(t -> minimum([t[1] + frc_days, t[2]])) => :frcend)
+    end
+
+    # Dictionary for the end day of frc
+    d_frcend = Dict(tmp.eventId .=> tmp.frcend)
+
+    # CHECKPOINT: TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
+
     transform!(dfg, :dt => ByRow(datetime2julian) => :x)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
+
+
 
     lenlayout = length(unique(dfg[!, problayout]))
 
