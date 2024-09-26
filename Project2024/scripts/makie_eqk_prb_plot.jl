@@ -34,18 +34,27 @@ mkpath(targetdir())
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 # SETME
-train_yr = Year(3) # this is for earthquake plot # FIXME: should be totally removed
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
 transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
 
-# TODO: Load all joint-station data here:
+# # Load all joint-station data here:
 
 df = DataFrame()
 for df0 in Project2024.load_all_trials(PhaseTestEQK())
     append!(df, df0; cols=:intersect)
 end
 
-[df0 for df0 in Project2024.load_all_trials(PhaseTestEQK())]
+# convert `probabilityTimeStr` to `DateTime`
+transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
+transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
+transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
+
+# TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
+filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
+
+
+
+# # Load and process Catalog
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
 
@@ -54,6 +63,14 @@ catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
     select!(Not(:DateTime), :DateTime => :DateTimeStr)
     transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false)
 end
+
+train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
+
+inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
+filter!(:time => inrange(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
+filter!(:Mag => (x -> x ≥ 5.0), catalog)
+
+transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
 
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
@@ -74,6 +91,7 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 # - NOTE: `palettes` is deprecated after AoG v0.7. One should use ` scales(Color=(; palette= ...), Layout=(; palette= ...))` instead.
 
 # Categorize :eventId
+# - `eventId` is the hash of eventTimeStr, eventSize, eventLat, ...; see `preprocess_phase_test_eqk.jl` in CWBProjectSummaryDatasets.
 # - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
 # - Try the followings to figure out:
 #   ```
@@ -86,22 +104,9 @@ transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
 
-## Preprocess
-# convert `probabilityTimeStr` to `DateTime`
-transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
-transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
-transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
-
-# TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-filter!(:dt => t -> t < DateTime(2024, 5, 6), df)
 
 # Plot Catalog
-# TODO: Plot events of training and forecasting period separately, where
-inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:time => inrange(extrema(df.dt)), catalog) # FIXME: This filter might need be revised
-filter!(:Mag => (x -> x ≥ 5.0), catalog) # FIXME: Make all catalog processing in the same section
-
-transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
+# TODO: Plot events of training and forecasting period separately,
 
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
