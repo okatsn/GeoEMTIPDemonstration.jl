@@ -544,7 +544,9 @@ version = "0.6.2"
 
 [[deps.GeoEMTIPDemonstration]]
 deps = ["AlgebraOfGraphics", "CairoMakie", "DataFrames", "Dates", "MolchanCB", "OkDataFrameTools", "OkMakieToolkits", "Statistics"]
-git-tree-sha1 = "b71afc7b9306db84a8ed9abd59ad0ba517d0e2d4"
+git-tree-sha1 = "de552df63ce5ce89dfd76b98c4117084f224fe6e"
+repo-rev = "eqk-prb-new-data"
+repo-url = ".."
 uuid = "ebde9838-6584-4548-b79e-429a239baf90"
 version = "0.1.0"
 
