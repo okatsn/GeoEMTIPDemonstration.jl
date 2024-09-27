@@ -173,7 +173,10 @@ eqk = @view EQK[!, targetcols]
 eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
 insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
 
-# a "dictionary" for indexing variable's range
+# # A "dictionary" for indexing variable's range, where
+# - `eventTime` is the maximum temporal distance between the earliest and latest target events occurred.
+# - `eventLat` is the maximum spatial distance between the most distant two events in the latitude dimension and unit.
+# - `eventLon` is the maximum spatial distance between the most distant two events in the longitude dimension and unit.
 evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
 
 eqk_crad = Dict( # SETME:
@@ -182,14 +185,14 @@ eqk_crad = Dict( # SETME:
     "eventLat" => 0.1,
 ) # radius for DBSCAN clustering
 
-latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum
+latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
 
 rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
 rrratio_maxspace = latrange / eqk_crad["eventLat"]
 
 
 normalize(el::EventSpaceAlgebra.Spatial) = el
-function normalize(el::EventSpaceAlgebra.Temporal)
+function normalize(el::EventSpaceAlgebra.Temporal) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
     tp = typeof(el)
     newval = (get_value(el - minimum(EQK.eventTime))) /
              eqk_crad["eventTime"] * eqk_crad["eventLat"]
