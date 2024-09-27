@@ -171,7 +171,7 @@ filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df) # FIXME: Revi
 
 # Table of target earthquake
 eachevent = groupby(df, :eventId)
-targetcols = [:eventTime, :eventLon, :eventLat]
+targetcols = [:eventTime, :eventLat, :eventLon]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
 
 
@@ -219,9 +219,13 @@ end
 
 
 # Convert catalog events to points
-transform!(EQK, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
-catalog_points = [event_to_point(row.t, row.lat, row.lon) for row in eachrow(EQK)]
+transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
+catalog_points = [event_to_point(row.t, row.lat, row.lon) for row in eachrow(catalog)]
 catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
+
+# Build a KDTree for the catalog data
+catalog_tree = KDTree(catalog_matrix)
+
 
 
 
