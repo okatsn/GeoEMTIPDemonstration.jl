@@ -176,7 +176,7 @@ EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false)
 
 
 # Convert latitude and longitude to x and y coordinates in kilometers
-function latlon_to_xy(lat, lon; ref_lat=mean(get_value.(EQK.eventLat)))
+function latlon_to_xy(lat, lon; ref_lat=mean(get_value.(EQK.eventLat))) # KEYNOTE: EventSpaceAlgebra currently don't support division `/`; thus, `mean` will fail.
     R = 6371.0  # Earth's radius in kilometers
     x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
     y = deg2rad(lat) * R
@@ -206,13 +206,14 @@ end # WARN: NOT revised and verified yet.
 # Function to convert geographic coordinates and time to a scaled 4D point
 function event_to_point(time, args..., # e.g., lat, lon, depth
     ; time_scale=10, # SETME: 1 day is equivalent to 10 km in spatial closeness
+    ref_time=get_value(minimum(EQK.eventTime)),
     converter=latlon_to_xy
 )
 
     # Convert geographic coordinates to x, y, z
     point = converter(args...)
     # Scale time
-    t_scaled = time * time_scale
+    t_scaled = (time - ref_time) * time_scale
     return [point..., t_scaled]
 end
 
