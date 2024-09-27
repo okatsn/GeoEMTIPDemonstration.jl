@@ -48,9 +48,13 @@ end
 transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
+transform!(catalog, :time => ByRow(x -> EventTime(datetime2julian(x), JulianDay)) => :eventTime)
 
-
-
+# Event location
+transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
+transform!(catalog, :Lat => ByRow(x -> Latitude(x, Degree)) => :eventLat)
+transform!(catalog, :Lon => ByRow(x -> Longitude(x, Degree)) => :eventLon)
 
 # # Load and process Catalog
 
@@ -155,16 +159,14 @@ filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df) # FIXME: Revi
 
 
 
-# Event location
-transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
-transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
+# # Event clustering
 
-
-
-## Event clustering
+# Table of target earthquake
 eachevent = groupby(df, :eventId)
 targetcols = [:eventTime, :eventLon, :eventLat]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
+
+#
 
 
 ## Standardization/Normalization
