@@ -218,6 +218,13 @@ function event_to_point(time, args..., # e.g., lat, lon, depth
 end
 
 
+# Convert catalog events to points
+transform!(EQK, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
+catalog_points = [event_to_point(row.t, row.lat, row.lon) for row in eachrow(EQK)]
+catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
+
+
+
 ## Standardization/Normalization
 # normalized radius for DBSCAN
 eqk = @view EQK[!, targetcols]
