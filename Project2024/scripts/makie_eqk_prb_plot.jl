@@ -176,11 +176,11 @@ EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false)
 
 
 # Convert latitude and longitude to x and y coordinates in kilometers
-function latlon_to_xy(lat, lon, ref_lat)
+function latlon_to_xy(lat, lon; ref_lat=mean(get_value.(EQK.eventLat)))
     R = 6371.0  # Earth's radius in kilometers
     x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
     y = deg2rad(lat) * R
-    return x, y
+    return (x, y)
 end # revised (2024.09).
 
 # Function to convert latitude, longitude, and depth to x, y, z coordinates in kilometers
@@ -196,24 +196,25 @@ function geographic_to_xyz(lat, lon, depth)
     x = R * cos(lat_rad) * cos(lon_rad)
     y = R * cos(lat_rad) * sin(lon_rad)
     z = R * sin(lat_rad)
-    return x, y, z
-end # WARN: Not revised and verified.
+    return (x, y, z)
+end # WARN: NOT revised and verified yet.
 
 
 
 # Define scaling factors
-time_scale = 10.0  # SETME: 1 day is equivalent to 10 km in spatial closeness
 
 # Function to convert geographic coordinates and time to a scaled 4D point
-function event_to_point(lat, lon, depth, time, time_scale)
+function event_to_point(time, args..., # e.g., lat, lon, depth
+    ; time_scale=10, # SETME: 1 day is equivalent to 10 km in spatial closeness
+    converter=latlon_to_xy
+)
+
     # Convert geographic coordinates to x, y, z
-    x, y, z = geographic_to_xyz(lat, lon, depth)
+    point = converter(args...)
     # Scale time
     t_scaled = time * time_scale
-    return [x, y, z, t_scaled]
+    return [point..., t_scaled]
 end
-
-transform!(df, [:eventLat, :eventLon, :] => )
 
 
 ## Standardization/Normalization
