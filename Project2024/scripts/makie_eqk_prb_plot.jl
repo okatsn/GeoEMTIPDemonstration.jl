@@ -18,8 +18,10 @@ using OkFiles
 using Shapefile
 using CategoricalArrays
 # clustering
-using Clustering
+using Clustering # FIXME: To remove
 using EventSpaceAlgebra
+using NearestNeighbors
+using LinearAlgebra
 
 targetdir(args...) = joinpath("temp/2024", args...)
 mkpath(targetdir())
@@ -57,8 +59,8 @@ end
 
 train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
 
-inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:time => inrange(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
+select_from_train(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
+filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 filter!(:Mag => (x -> x ≥ 5.0), catalog)
 
 transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
@@ -103,7 +105,7 @@ transform!(df, :eventId => CategoricalArray; renamecols=false)
 transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
 transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
 transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
-transform!(catalog, :time => ByRow(x -> EventTime(datetime2julian(x), JulianDay)) => :eventTime)
+transform!(catalog, :dt_julian => ByRow(x -> EventTime(x, JulianDay)) => :eventTime)
 
 # Event location
 transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
@@ -172,7 +174,14 @@ eachevent = groupby(df, :eventId)
 targetcols = [:eventTime, :eventLon, :eventLat]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
 
-#
+
+# Convert latitude and longitude to x and y coordinates in kilometers
+function latlon_to_xy(lat, lon, ref_lat)
+    R = 6371.0  # Earth's radius in kilometers
+    x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
+    y = deg2rad(lat) * R
+    return x, y
+end
 
 
 ## Standardization/Normalization
