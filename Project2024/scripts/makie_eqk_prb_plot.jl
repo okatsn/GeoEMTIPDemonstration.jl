@@ -200,6 +200,22 @@ function geographic_to_xyz(lat, lon, depth)
 end # WARN: Not revised and verified.
 
 
+
+# Define scaling factors
+time_scale = 10.0  # SETME: 1 day is equivalent to 10 km in spatial closeness
+
+# Function to convert geographic coordinates and time to a scaled 4D point
+function event_to_point(lat, lon, depth, time, time_scale)
+    # Convert geographic coordinates to x, y, z
+    x, y, z = geographic_to_xyz(lat, lon, depth)
+    # Scale time
+    t_scaled = time * time_scale
+    return [x, y, z, t_scaled]
+end
+
+transform!(df, [:eventLat, :eventLon, :] => )
+
+
 ## Standardization/Normalization
 # normalized radius for DBSCAN
 eqk = @view EQK[!, targetcols]
