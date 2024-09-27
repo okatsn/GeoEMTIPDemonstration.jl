@@ -20,6 +20,8 @@ using CategoricalArrays
 # clustering
 using Clustering
 using EventSpaceAlgebra
+using NearestNeighbors
+using LinearAlgebra
 
 targetdir(args...) = joinpath("temp/2024", args...)
 mkpath(targetdir())
@@ -44,13 +46,6 @@ for df0 in Project2024.load_all_trials(PhaseTestEQK())
     append!(df, df0; cols=:intersect)
 end
 
-# convert `probabilityTimeStr` to `DateTime`
-transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
-transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
-transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
-
-
-
 
 # # Load and process Catalog
 
@@ -64,11 +59,13 @@ end
 
 train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
 
-inrange(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:time => inrange(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
+select_from_train(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
 filter!(:Mag => (x -> x ≥ 5.0), catalog)
 
 transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
+
+
+# # Map data
 
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
@@ -103,9 +100,23 @@ transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
 
+# convert `probabilityTimeStr` to `DateTime`
+transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
+transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
+transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
+transform!(catalog, :dt_julian => ByRow(x -> EventTime(x, JulianDay)) => :eventTime)
+
+# Event location
+transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
+transform!(catalog, :Lat => ByRow(x -> Latitude(x, Degree)) => :eventLat)
+transform!(catalog, :Lon => ByRow(x -> Longitude(x, Degree)) => :eventLon)
+
+
+
 # Plot Catalog # WARN: catalog is detached from df
 # TODO: Plot events of training and forecasting period separately,
-
+filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
 
@@ -155,15 +166,11 @@ filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df) # FIXME: Revi
 
 
 
-# Event location
-transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
-transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
+# # Event clustering
 
-
-
-## Event clustering
+# Table of target earthquake
 eachevent = groupby(df, :eventId)
-targetcols = [:eventTime, :eventLon, :eventLat]
+targetcols = [:eventTime, :eventLat, :eventLon]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
 
 
@@ -173,7 +180,10 @@ eqk = @view EQK[!, targetcols]
 eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
 insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
 
-# a "dictionary" for indexing variable's range
+# # A "dictionary" for indexing variable's range, where
+# - `eventTime` is the maximum temporal distance between the earliest and latest target events occurred.
+# - `eventLat` is the maximum spatial distance between the most distant two events in the latitude dimension and unit.
+# - `eventLon` is the maximum spatial distance between the most distant two events in the longitude dimension and unit.
 evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
 
 eqk_crad = Dict( # SETME:
@@ -182,14 +192,14 @@ eqk_crad = Dict( # SETME:
     "eventLat" => 0.1,
 ) # radius for DBSCAN clustering
 
-latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum
+latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
 
 rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
 rrratio_maxspace = latrange / eqk_crad["eventLat"]
 
 
 normalize(el::EventSpaceAlgebra.Spatial) = el
-function normalize(el::EventSpaceAlgebra.Temporal)
+function normalize(el::EventSpaceAlgebra.Temporal) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
     tp = typeof(el)
     newval = (get_value(el - minimum(EQK.eventTime))) /
              eqk_crad["eventTime"] * eqk_crad["eventLat"]
@@ -205,6 +215,62 @@ insertcols!(EQK, :clusterId => dbresult.assignments)
 event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 
 transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
+
+
+
+
+# # Find events around the target cluster.
+
+# Convert latitude and longitude to x and y coordinates in kilometers
+function latlon_to_xy(lat, lon; ref_lat=mean(get_value.(EQK.eventLat))) # KEYNOTE: EventSpaceAlgebra currently don't support division `/`; thus, `mean` will fail.
+    R = 6371.0  # Earth's radius in kilometers
+    x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
+    y = deg2rad(lat) * R
+    return (x, y)
+end # revised (2024.09).
+
+# Function to convert latitude, longitude, and depth to x, y, z coordinates in kilometers
+function geographic_to_xyz(lat, lon, depth)
+    # Earth's radius in kilometers
+    R_earth = 6371.0
+    # Convert latitude and longitude from degrees to radians
+    lat_rad = deg2rad(lat)
+    lon_rad = deg2rad(lon)
+    # Adjust radius for depth (assuming depth is positive below the surface)
+    R = R_earth - depth
+    # Spherical to Cartesian conversion
+    x = R * cos(lat_rad) * cos(lon_rad)
+    y = R * cos(lat_rad) * sin(lon_rad)
+    z = R * sin(lat_rad)
+    return (x, y, z)
+end # WARN: NOT revised and verified yet.
+
+
+
+# Define scaling factors
+
+# Function to convert geographic coordinates and time to a scaled 4D point
+function event_to_point(time, args..., # e.g., lat, lon, depth
+    ; time_scale=10, # SETME: 1 day is equivalent to 10 km in spatial closeness
+    ref_time=get_value(minimum(EQK.eventTime)),
+    converter=latlon_to_xy
+)
+
+    # Convert geographic coordinates to x, y, z
+    point = converter(args...)
+    # Scale time
+    t_scaled = (time - ref_time) * time_scale
+    return [point..., t_scaled]
+end
+
+
+# Convert catalog events to points
+transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
+catalog_points = [event_to_point(row.t, row.lat, row.lon) for row in eachrow(catalog)]
+catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
+
+# Build a KDTree for the catalog data
+catalog_tree = KDTree(catalog_matrix)
 
 
 
