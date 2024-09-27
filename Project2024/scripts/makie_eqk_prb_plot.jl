@@ -181,7 +181,23 @@ function latlon_to_xy(lat, lon, ref_lat)
     x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
     y = deg2rad(lat) * R
     return x, y
-end
+end # revised (2024.09).
+
+# Function to convert latitude, longitude, and depth to x, y, z coordinates in kilometers
+function geographic_to_xyz(lat, lon, depth)
+    # Earth's radius in kilometers
+    R_earth = 6371.0
+    # Convert latitude and longitude from degrees to radians
+    lat_rad = deg2rad(lat)
+    lon_rad = deg2rad(lon)
+    # Adjust radius for depth (assuming depth is positive below the surface)
+    R = R_earth - depth
+    # Spherical to Cartesian conversion
+    x = R * cos(lat_rad) * cos(lon_rad)
+    y = R * cos(lat_rad) * sin(lon_rad)
+    z = R * sin(lat_rad)
+    return x, y, z
+end # WARN: Not revised and verified.
 
 
 ## Standardization/Normalization
