@@ -18,7 +18,7 @@ using OkFiles
 using Shapefile
 using CategoricalArrays
 # clustering
-using Clustering # FIXME: To remove
+using Clustering
 using EventSpaceAlgebra
 using NearestNeighbors
 using LinearAlgebra
@@ -60,7 +60,6 @@ end
 train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
 
 select_from_train(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 filter!(:Mag => (x -> x ≥ 5.0), catalog)
 
 transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
@@ -117,7 +116,7 @@ transform!(catalog, :Lon => ByRow(x -> Longitude(x, Degree)) => :eventLon)
 
 # Plot Catalog # WARN: catalog is detached from df
 # TODO: Plot events of training and forecasting period separately,
-
+filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
 
@@ -175,6 +174,53 @@ targetcols = [:eventTime, :eventLat, :eventLon]
 EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
 
 
+## Standardization/Normalization
+# normalized radius for DBSCAN
+eqk = @view EQK[!, targetcols]
+eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
+insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
+
+# # A "dictionary" for indexing variable's range, where
+# - `eventTime` is the maximum temporal distance between the earliest and latest target events occurred.
+# - `eventLat` is the maximum spatial distance between the most distant two events in the latitude dimension and unit.
+# - `eventLon` is the maximum spatial distance between the most distant two events in the longitude dimension and unit.
+evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
+
+eqk_crad = Dict( # SETME:
+    "eventTime" => 30.0, #days
+    "eventLon" => 0.1, # deg., ~11 km
+    "eventLat" => 0.1,
+) # radius for DBSCAN clustering
+
+latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
+
+rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
+rrratio_maxspace = latrange / eqk_crad["eventLat"]
+
+
+normalize(el::EventSpaceAlgebra.Spatial) = el
+function normalize(el::EventSpaceAlgebra.Temporal) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
+    tp = typeof(el)
+    newval = (get_value(el - minimum(EQK.eventTime))) /
+             eqk_crad["eventTime"] * eqk_crad["eventLat"]
+    tp(newval, get_unit(el))
+end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
+
+EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
+
+# # Clusterting by dbscan
+dbresult = dbscan(get_value.(Matrix(EQK_n))', eqk_crad["eventLat"])
+insertcols!(EQK, :clusterId => dbresult.assignments)
+
+event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
+
+transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
+
+
+
+
+# # Find events around the target cluster.
+
 # Convert latitude and longitude to x and y coordinates in kilometers
 function latlon_to_xy(lat, lon; ref_lat=mean(get_value.(EQK.eventLat))) # KEYNOTE: EventSpaceAlgebra currently don't support division `/`; thus, `mean` will fail.
     R = 6371.0  # Earth's radius in kilometers
@@ -225,51 +271,6 @@ catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
 
 # Build a KDTree for the catalog data
 catalog_tree = KDTree(catalog_matrix)
-
-
-
-
-## Standardization/Normalization
-# normalized radius for DBSCAN
-eqk = @view EQK[!, targetcols]
-eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
-insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
-
-# # A "dictionary" for indexing variable's range, where
-# - `eventTime` is the maximum temporal distance between the earliest and latest target events occurred.
-# - `eventLat` is the maximum spatial distance between the most distant two events in the latitude dimension and unit.
-# - `eventLon` is the maximum spatial distance between the most distant two events in the longitude dimension and unit.
-evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
-
-eqk_crad = Dict( # SETME:
-    "eventTime" => 30.0, #days
-    "eventLon" => 0.1, # deg., ~11 km
-    "eventLat" => 0.1,
-) # radius for DBSCAN clustering
-
-latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
-
-rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
-rrratio_maxspace = latrange / eqk_crad["eventLat"]
-
-
-normalize(el::EventSpaceAlgebra.Spatial) = el
-function normalize(el::EventSpaceAlgebra.Temporal) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
-    tp = typeof(el)
-    newval = (get_value(el - minimum(EQK.eventTime))) /
-             eqk_crad["eventTime"] * eqk_crad["eventLat"]
-    tp(newval, get_unit(el))
-end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
-
-EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
-
-# # Clusterting by dbscan
-dbresult = dbscan(get_value.(Matrix(EQK_n))', eqk_crad["eventLat"])
-insertcols!(EQK, :clusterId => dbresult.assignments)
-
-event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
-
-transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 
 
