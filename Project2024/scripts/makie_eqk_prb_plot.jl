@@ -44,17 +44,6 @@ for df0 in Project2024.load_all_trials(PhaseTestEQK())
     append!(df, df0; cols=:intersect)
 end
 
-# convert `probabilityTimeStr` to `DateTime`
-transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
-transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
-transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
-transform!(catalog, :time => ByRow(x -> EventTime(datetime2julian(x), JulianDay)) => :eventTime)
-
-# Event location
-transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
-transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
-transform!(catalog, :Lat => ByRow(x -> Latitude(x, Degree)) => :eventLat)
-transform!(catalog, :Lon => ByRow(x -> Longitude(x, Degree)) => :eventLon)
 
 # # Load and process Catalog
 
@@ -73,6 +62,9 @@ filter!(:time => inrange(extrema(df.dt)), catalog) # (Optional) Remove excessive
 filter!(:Mag => (x -> x ≥ 5.0), catalog)
 
 transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
+
+
+# # Map data
 
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
 
@@ -104,6 +96,20 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
+
+
+
+# convert `probabilityTimeStr` to `DateTime`
+transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
+transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
+transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
+transform!(catalog, :time => ByRow(x -> EventTime(datetime2julian(x), JulianDay)) => :eventTime)
+
+# Event location
+transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
+transform!(catalog, :Lat => ByRow(x -> Latitude(x, Degree)) => :eventLat)
+transform!(catalog, :Lon => ByRow(x -> Longitude(x, Degree)) => :eventLon)
 
 
 
