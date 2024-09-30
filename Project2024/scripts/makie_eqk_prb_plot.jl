@@ -273,9 +273,9 @@ catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
 catalog_tree = KDTree(catalog_matrix)
 
 # # CHECKPOINT:
-# - Find events around, and then filter them with time > 180 forecasting days.
+# - Find events around, and then filter them with depth < 50 km and time > 180 forecasting days.
 # - Refer: https://chatgpt.com/c/66f665fa-05a8-8012-aaa0-cada9b73487c?model=o1-preview
-
+# - https://chatgpt.com/c/66fa0750-7624-8012-8a5e-1118e8c9961a
 
 # FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
 
