@@ -50,19 +50,22 @@ end
 # # Load and process Catalog
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
+filter!(:Mag => (x -> x ≥ 5.0), catalog)
 
 # Catalog of MagTIP type:
 @chain catalog begin
     select!(Not(:DateTime), :DateTime => :DateTimeStr)
     transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false)
+    transform!(:time => ByRow(EventTimeJD) => :eventTime)
+    transform!(:time => ByRow(t -> datetime2julian(t)) => :dt_julian)
+    transform!(:Lat => ByRow(x -> Latitude(x * u"°")) => :eventLat)
+    transform!(:Lon => ByRow(x -> Longitude(x * u"°")) => :eventLon)
 end
 
 train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
 
 select_from_train(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
-filter!(:Mag => (x -> x ≥ 5.0), catalog)
 
-transform!(catalog, :time => ByRow(t -> datetime2julian(t)) => :dt_julian)
 
 
 # # Map data
@@ -101,16 +104,12 @@ transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
 # convert `probabilityTimeStr` to `DateTime`
-transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt)
-transform!(df, :eventTimeStr => ByRow(t -> DateTime(t, "d-u-y H:M:S")) => :eventTime)
-transform!(df, :eventTime => ByRow(x -> EventTime(datetime2julian(x), JulianDay)); renamecols=false)
-transform!(catalog, :dt_julian => ByRow(x -> EventTime(x, JulianDay)) => :eventTime)
+transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt) # FIXME: unify :time, :dt in this script
+transform!(df, :eventTimeStr => ByRow(t -> EventTimeJD(DateTime(t, "d-u-y H:M:S"))) => :eventTime)
 
 # Event location
-transform!(df, :eventLat => ByRow(x -> Latitude(x, Degree)); renamecols=false)
-transform!(df, :eventLon => ByRow(x -> Longitude(x, Degree)); renamecols=false)
-transform!(catalog, :Lat => ByRow(x -> Latitude(x, Degree)) => :eventLat)
-transform!(catalog, :Lon => ByRow(x -> Longitude(x, Degree)) => :eventLon)
+transform!(df, :eventLat => ByRow(x -> Latitude(x * u"°")); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> Longitude(x * u"°")); renamecols=false)
 
 
 
