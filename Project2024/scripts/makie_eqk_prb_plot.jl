@@ -67,7 +67,6 @@ train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to 
 select_from_train(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
 
 
-
 # # Map data
 
 twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
@@ -191,24 +190,27 @@ eqk_crad = Dict( # SETME:
     "eventLat" => 0.1,
 ) # radius for DBSCAN clustering
 
+get_value(x) = x.val # FIXME: Consider deprecate this interface
+get_value2(x) = x.value.val # FIXME: Consider deprecate this interface
+
+
 latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
 
 rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
 rrratio_maxspace = latrange / eqk_crad["eventLat"]
 
-
-normalize(el::EventSpaceAlgebra.Spatial) = el
-function normalize(el::EventSpaceAlgebra.Temporal) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
+normalize(el::EventSpaceAlgebra.AngularCoordinate) = el
+function normalize(el::EventSpaceAlgebra.TemporalCoordinate) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
     tp = typeof(el)
-    newval = (get_value(el - minimum(EQK.eventTime))) /
+    newval = (el - minimum(EQK.eventTime)) /
              eqk_crad["eventTime"] * eqk_crad["eventLat"]
-    tp(newval, get_unit(el))
+    tp(newval)
 end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
 
 EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
 
 # # Clusterting by dbscan
-dbresult = dbscan(get_value.(Matrix(EQK_n))', eqk_crad["eventLat"])
+dbresult = dbscan(get_value2.(Matrix(EQK_n))', eqk_crad["eventLat"])
 insertcols!(EQK, :clusterId => dbresult.assignments)
 
 event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
@@ -221,7 +223,7 @@ transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 # # Find events around the target cluster.
 
 # Convert latitude and longitude to x and y coordinates in kilometers
-function latlon_to_xy(lat, lon; ref_lat=mean(get_value.(EQK.eventLat))) # KEYNOTE: EventSpaceAlgebra currently don't support division `/`; thus, `mean` will fail.
+function latlon_to_xy(lat, lon; ref_lat=mean(EQK.eventLat)) # KEYNOTE: EventSpaceAlgebra currently don't support division `/`; thus, `mean` will fail.
     R = 6371.0  # Earth's radius in kilometers
     x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
     y = deg2rad(lat) * R
@@ -251,7 +253,7 @@ end # WARN: NOT revised and verified yet.
 # Function to convert geographic coordinates and time to a scaled 4D point
 function event_to_point(time, args..., # e.g., lat, lon, depth
     ; time_scale=10, # SETME: 1 day is equivalent to 10 km in spatial closeness
-    ref_time=get_value(minimum(EQK.eventTime)),
+    ref_time=minimum(EQK.eventTime),
     converter=latlon_to_xy
 )
 
@@ -264,8 +266,8 @@ end
 
 
 # Convert catalog events to points
-transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
-catalog_points = [event_to_point(row.t, row.lat, row.lon) for row in eachrow(catalog)]
+transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value2) .=> [:t, :lat, :lon])
+catalog_points = [event_to_point(row.eventTime, row.eventLat, row.eventLon) for row in eachrow(catalog)]
 catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
 
 # Build a KDTree for the catalog data
