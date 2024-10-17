@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.5"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "30ef64121d31a1ceaf929a610e38e1861e4b010b"
 
@@ -407,7 +407,7 @@ uuid = "4e289a0a-7415-4d19-859d-a7e5c4648b56"
 version = "1.0.4"
 
 [[deps.EventSpaceAlgebra]]
-deps = ["Dates", "Distances", "Geodesy", "LinearAlgebra", "Unitful"]
+deps = ["Dates", "Distances", "Geodesy", "LinearAlgebra", "Statistics", "Unitful"]
 path = "/home/jovyan/.julia/dev/EventSpaceAlgebra"
 uuid = "8edd2f2a-3081-48b8-b943-5251c412605e"
 version = "0.3.0-DEV"
@@ -1752,7 +1752,7 @@ version = "0.15.2+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.11.0+0"
+version = "5.8.0+1"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

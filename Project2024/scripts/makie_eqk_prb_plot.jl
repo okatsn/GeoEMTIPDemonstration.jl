@@ -185,32 +185,27 @@ insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
 evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
 
 eqk_crad = Dict( # SETME:
-    "eventTime" => 30.0, #days
-    "eventLon" => 0.1, # deg., ~11 km
-    "eventLat" => 0.1,
+    "eventTime" => 30.0 * u"d", #days
+    "eventLon" => 0.1u"°", # deg., ~11 km
+    "eventLat" => 0.1u"°",
 ) # radius for DBSCAN clustering
 
-get_value(x) = x.val # FIXME: Consider deprecate this interface
-get_value2(x) = x.value.val # FIXME: Consider deprecate this interface
+latrange = [evtvarrange.eventLon, evtvarrange.eventLat] |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
 
-
-latrange = get_value.([evtvarrange.eventLon, evtvarrange.eventLat]) |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
-
-rrratio_time = get_value(evtvarrange.eventTime) / eqk_crad["eventLat"]
+rrratio_time = (evtvarrange.eventTime / eqk_crad["eventLat"]).val
 rrratio_maxspace = latrange / eqk_crad["eventLat"]
 
-normalize(el::EventSpaceAlgebra.AngularCoordinate) = el
+normalize(el::EventSpaceAlgebra.AngularCoordinate) = el.value.val
 function normalize(el::EventSpaceAlgebra.TemporalCoordinate) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
-    tp = typeof(el)
-    newval = (el - minimum(EQK.eventTime)) /
-             eqk_crad["eventTime"] * eqk_crad["eventLat"]
-    tp(newval)
+    newval = (el.value.val - minimum(EQK.eventTime).value.val) /
+             eqk_crad["eventTime"].val * eqk_crad["eventLat"].val
+    newval
 end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
 
 EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
 
 # # Clusterting by dbscan
-dbresult = dbscan(get_value2.(Matrix(EQK_n))', eqk_crad["eventLat"])
+dbresult = dbscan(Matrix(EQK_n)', eqk_crad["eventLat"].val)
 insertcols!(EQK, :clusterId => dbresult.assignments)
 
 event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
@@ -281,10 +276,11 @@ catalog_tree = KDTree(catalog_matrix)
 # FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
 
 frc_days = Day(173) # FIXME: Temp
-
+get_value(ec::EventCoordinate) = ec.value.val
+disallowmissing!(df)
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
-# dfg1 = groupdfs[4]
+# dfg1 = groupdfs[5]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
 
@@ -293,12 +289,8 @@ function eqkprb_plot(dfg1)
         transform!(:t0t1 => ByRow(t -> minimum([t[1] + frc_days, t[2]])) => :frcend)
     end
 
-    # Dictionary for the end day of frc
-    d_frcend = Dict(tmp.eventId .=> tmp.frcend)
-
     # CHECKPOINT: TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-
-    transform!(dfg, :dt => ByRow(datetime2julian) => :x)
+    transform!(dfg, :dt => ByRow(t -> datetime2julian(t)) => :tx)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
 
@@ -306,8 +298,8 @@ function eqkprb_plot(dfg1)
     lenlayout = length(unique(dfg[!, problayout]))
 
 
-    dfgc = combine(groupby(dfg, [:prp, :trial, :x]),
-        :x => unique,
+    dfgc = combine(groupby(dfg, [:prp, :trial, :tx]),
+        :tx => unique,
         :probabilityMean => mean => :y,
         :probabilityMean => maximum => :y_up,
         :probabilityMean => minimum => :y_lo,
@@ -315,8 +307,8 @@ function eqkprb_plot(dfg1)
         :prp => unique;
         renamecols=false
     )
-    visline = visual(Lines) * mapping(:x => identity => "date", :y => identity => "P")
-    visband = visual(Band; alpha=0.15) * mapping(:x, :y_lo, :y_up)
+    visline = visual(Lines) * mapping(:tx => identity => "date", :y => identity => "P")
+    visband = visual(Band; alpha=0.15) * mapping(:tx, :y_lo, :y_up)
     probplt = data(dfgc) * (visband + visline) * mapping(layout=problayout) * mapping(color=:prp)
 
 
@@ -347,7 +339,7 @@ function eqkprb_plot(dfg1)
     for (i, (axleft, axright)) in enumerate(zip(leftaxs, rightaxs))
         for ax in [axleft, axright]
             ax.xticklabelrotation = 0.2π
-            datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.x), Month(1))
+            datetimeticks!(ax, identity.(dfg.dt), identity.(dfg.tx), Month(1))
             if i != lenax
                 ax.xticklabelsvisible[] = false
                 ax.xticksvisible[] = false
