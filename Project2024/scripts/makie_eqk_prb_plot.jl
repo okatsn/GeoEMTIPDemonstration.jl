@@ -58,8 +58,11 @@ filter!(:Mag => (x -> x ≥ 5.0), catalog)
     transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false)
     transform!(:time => ByRow(EventTimeJD) => :eventTime)
     transform!(:time => ByRow(t -> datetime2julian(t)) => :dt_julian)
-    transform!(:Lat => ByRow(x -> Latitude(x * u"°")) => :eventLat)
-    transform!(:Lon => ByRow(x -> Longitude(x * u"°")) => :eventLon)
+    transform!(:Lat => ByRow(latitude) => :eventLat)
+    transform!(:Lon => ByRow(longitude) => :eventLon)
+    transform!(:Mag => ByRow(EventMagnitude{RichterMagnitude}) => :eventSize)
+    transform!(:Depth => ByRow(Depth) => :eventDepth)
+    transform!(Cols(:eventTime, :eventLat, :eventLon, :eventSize, :eventDepth) => ByRow(EventPoint) => :eventPoint)
 end
 
 train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
@@ -107,8 +110,10 @@ transform!(df, :probabilityTimeStr => ByRow(t -> DateTime(t, "d-u-y")) => :dt) #
 transform!(df, :eventTimeStr => ByRow(t -> EventTimeJD(DateTime(t, "d-u-y H:M:S"))) => :eventTime)
 
 # Event location
-transform!(df, :eventLat => ByRow(x -> Latitude(x * u"°")); renamecols=false)
-transform!(df, :eventLon => ByRow(x -> Longitude(x * u"°")); renamecols=false)
+transform!(df, :eventLat => ByRow(x -> latitude(x)); renamecols=false)
+transform!(df, :eventLon => ByRow(x -> longitude(x)); renamecols=false)
+transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols=false)
+transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow(ArbitraryPoint) => :eventPoint)
 
 
 
@@ -160,7 +165,7 @@ Makie.save("Catalog_M5_map.png", f)
 
 
 # # KEYNOTE: We show only cases after 2022 (it is too much to show all)
-filter!(row -> DateTime(row.eventTime) > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
+filter!(row -> row.dt > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
