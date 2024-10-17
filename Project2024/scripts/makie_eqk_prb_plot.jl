@@ -113,7 +113,6 @@ transform!(df, :eventTimeStr => ByRow(t -> EventTimeJD(DateTime(t, "d-u-y H:M:S"
 transform!(df, :eventLat => ByRow(x -> latitude(x)); renamecols=false)
 transform!(df, :eventLon => ByRow(x -> longitude(x)); renamecols=false)
 transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols=false)
-transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow(ArbitraryPoint) => :eventPoint)
 
 
 
@@ -266,7 +265,16 @@ end
 
 
 # Convert catalog events to points
-transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value2) .=> [:t, :lat, :lon])
+transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
+
+
+enu_ref = ArbitraryPoint(latitude(23.9740), longitude(120.9798), Depth(0))
+transform!(catalog, :eventPoint => ByRow(e -> ENU(e, enu_ref)) => :PointENU)
+
+transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> ArbitraryPoint(t, lat, lon, Depth(-1))) => :eventPoint)
+transform!(df, :eventPoint => ByRow(e -> ENU(e, enu_ref)) => :PointENU)
+
+
 catalog_points = [event_to_point(row.eventTime, row.eventLat, row.eventLon) for row in eachrow(catalog)]
 catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
 
