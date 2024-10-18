@@ -20,8 +20,15 @@ using CategoricalArrays
 # clustering
 using Clustering
 using EventSpaceAlgebra
+using Unitful
 using NearestNeighbors
 using LinearAlgebra
+
+# Define the unit for scaling t in pointENU
+@unit hr12 "12hr" Hour12 12u"hr" false
+
+Unitful.register(@__MODULE__)
+
 
 targetdir(args...) = joinpath("temp/2024", args...)
 mkpath(targetdir())
@@ -64,6 +71,7 @@ filter!(:Mag => (x -> x ≥ 5.0), catalog)
     transform!(:Depth => ByRow(Depth) => :eventDepth)
     transform!(Cols(:eventTime, :eventLat, :eventLon, :eventSize, :eventDepth) => ByRow(EventPoint) => :eventPoint)
 end
+
 
 train_yr = Year(3) # this is for earthquake plot # FIXME: is there other way to identify the training period information?
 
@@ -217,42 +225,13 @@ event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
 
-
-
-# # Find events around the target cluster.
-
-# Convert latitude and longitude to x and y coordinates in kilometers
-function latlon_to_xy(lat, lon; ref_lat=mean(EQK.eventLat)) # KEYNOTE: EventSpaceAlgebra currently don't support division `/`; thus, `mean` will fail.
-    R = 6371.0  # Earth's radius in kilometers
-    x = deg2rad(lon) * R * cos(deg2rad(ref_lat))
-    y = deg2rad(lat) * R
-    return (x, y)
-end # revised (2024.09).
-
-# Function to convert latitude, longitude, and depth to x, y, z coordinates in kilometers
-function geographic_to_xyz(lat, lon, depth)
-    # Earth's radius in kilometers
-    R_earth = 6371.0
-    # Convert latitude and longitude from degrees to radians
-    lat_rad = deg2rad(lat)
-    lon_rad = deg2rad(lon)
-    # Adjust radius for depth (assuming depth is positive below the surface)
-    R = R_earth - depth
-    # Spherical to Cartesian conversion
-    x = R * cos(lat_rad) * cos(lon_rad)
-    y = R * cos(lat_rad) * sin(lon_rad)
-    z = R * sin(lat_rad)
-    return (x, y, z)
-end # WARN: NOT revised and verified yet.
-
-
-
 # Define scaling factors
+
 
 # Function to convert geographic coordinates and time to a scaled 4D point
 function event_to_point(time, args..., # e.g., lat, lon, depth
     ; time_scale=10, # SETME: 1 day is equivalent to 10 km in spatial closeness
-    ref_time=minimum(EQK.eventTime),
+    ref_time=minimum(EQK.eventTime), # the minimum time of target earthquakes
     converter=latlon_to_xy
 )
 
@@ -264,16 +243,19 @@ function event_to_point(time, args..., # e.g., lat, lon, depth
 end
 
 
-# Convert catalog events to points
-transform!(catalog, [:eventTime, :eventLat, :eventLon] .=> ByRow(get_value) .=> [:t, :lat, :lon])
+# # Convert catalog events to points
 
+# Create ENU points in a relative cartesian coordinate
 
-enu_ref = ArbitraryPoint(latitude(23.9740), longitude(120.9798), Depth(0))
-transform!(catalog, :eventPoint => ByRow(e -> ENU(e, enu_ref)) => :PointENU)
+enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
+transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> ArbitraryPoint(t, lat, lon, Depth(-1))) => :eventPoint)
-transform!(df, :eventPoint => ByRow(e -> ENU(e, enu_ref)) => :PointENU)
+transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
+
+uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
+uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
 
 catalog_points = [event_to_point(row.eventTime, row.eventLat, row.eventLon) for row in eachrow(catalog)]
 catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
