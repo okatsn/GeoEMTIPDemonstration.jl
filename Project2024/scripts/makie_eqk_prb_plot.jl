@@ -224,7 +224,6 @@ insertcols!(EQK, :clusterId => dbresult.assignments)
 event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 
 transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
-cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :centerPoint)
 
 # Define scaling factors
 
@@ -247,15 +246,26 @@ uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
 @assert get_units.(df.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 @assert get_units.(catalog.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
+cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :centerPoint)
+
+@assert get_units.(cluster_center.centerPoint) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
+
+
+
 catalog_points = [get_values(p) for p in catalog.pointENU]
-target_points = [get_values(p) for p in df.pointENU]
+cluster_centers = [get_values(p) for p in cluster_center.centerPoint]
 
 # Transpose for KDTree
-catalog_matrix = hcat(catalog_points...)
-target_matrix = hcat(target_points...)
+catalog_matrix = hcat(catalog_points...) # size nd (dimension) × np (point). See https://github.com/KristofferC/NearestNeighbors.jl?tab=readme-ov-file#creating-a-tree
+cluster_matrix = hcat(cluster_centers...)
 
 # Build a KDTree for the catalog data
-catalog_tree = KDTree(catalog_matrix)
+catalog_tree = KDTree(catalog_matrix) # default leafsize is 10
+nearby_points = inrange(catalog_tree, cluster_matrix, 40) # find points of catalog that are in the range of 40 around cluster center points.
+
+insertcols!(cluster_center, :catalog_idx => nearby_points)
+
+clusterid_to_nearby_event_index = Dict([row.clusterId => row.catalog_idx for row in eachrow(cluster_center)])
 
 # # CHECKPOINT:
 # - Find events around, and then filter them with depth < 50 km and time > 180 forecasting days.
