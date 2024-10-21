@@ -58,7 +58,7 @@ end
 # # Load and process Catalog
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
-filter!(:Mag => (x -> x ≥ 5.0), catalog)
+
 
 # Catalog of MagTIP type:
 @chain catalog begin
@@ -130,6 +130,7 @@ transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols
 filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
+catalogM5 = filter(:Mag => (x -> x ≥ 5.0), catalog)
 
 f = with_theme(size=(600, 700)) do
     f = Figure()
@@ -144,7 +145,7 @@ f = with_theme(size=(600, 700)) do
         backgroundcolor=:white,
         limits=((118, 123.6), nothing))
 
-    catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:Mag => magtransform) * mapping(:Lon, :Lat)
+    catalogplot = twmap + data(catalogM5) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:Mag => magtransform) * mapping(:Lon, :Lat)
     gd = draw!(eqkmap, catalogplot)
     colorbar!(f[0, 1:10], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
 
@@ -152,7 +153,7 @@ f = with_theme(size=(600, 700)) do
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
         align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
-    MLrefs = catalog.Mag |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
+    MLrefs = catalogM5.Mag |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
     MLrefy = range(21.4, 23, length=length(MLrefs)) |> collect
 
