@@ -277,10 +277,11 @@ clusterid_to_nearby_event_index = Dict([row.clusterId => row.catalog_idx for row
 
 frc_days = Day(173) # FIXME: Temp
 get_value(ec::EventCoordinate) = ec.value.val
+get_unit(ec::EventCoordinate) = ec.value |> unit
 disallowmissing!(df)
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
-# dfg1 = groupdfs[5]
+# dfg1 = groupdfs[3]
 function eqkprb_plot(dfg1)
     dfg = deepcopy(dfg1)
 
@@ -316,6 +317,15 @@ function eqkprb_plot(dfg1)
     eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize) for g in groupby(dfg, problayout)]
 
 
+    nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
+    tmpcatalog = transform(catalog, :eventTime => ByRow(get_value) => :evtx)[nontargetidx, :]
+    non_target_is_not_empty = !isempty(tmpcatalog)
+
+    if non_target_is_not_empty
+        @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
+        eqknontargetplts = fill(data(tmpcatalog) * visual(Scatter; color=:blue) * mapping(:evtx, :eventSize), length(eqkplts))
+    end
+
     f = Figure()
     # Draw probability plot
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
@@ -333,6 +343,9 @@ function eqkprb_plot(dfg1)
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
     rightaxs = OkMakieToolkits.twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    if non_target_is_not_empty
+        draw!.(rightaxs, eqknontargetplts)
+    end
     draw!.(rightaxs, eqkplts)
 
     lenax = length(leftaxs)
@@ -383,6 +396,10 @@ function eqkprb_plot(dfg1)
     draw!(ga, twmap)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
+    if non_target_is_not_empty
+        epi_plt2 = data(tmpcatalog) * visual(Scatter; color=:blue) * mapping(:eventLon => get_value, :eventLat => get_value)
+        draw!(ga, epi_plt2)
+    end
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
     draw!(ga, epi_plt) # use AoG to plot epicenter to allow setting scatter markers in `with_theme`.
 
