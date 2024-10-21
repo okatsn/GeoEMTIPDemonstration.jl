@@ -23,6 +23,7 @@ using EventSpaceAlgebra
 using Unitful
 using NearestNeighbors
 using LinearAlgebra
+using Test
 
 # Define the unit for scaling t in pointENU
 @unit hr12 "12hr" Hour12 12u"hr" false
@@ -223,30 +224,16 @@ insertcols!(EQK, :clusterId => dbresult.assignments)
 event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 
 transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
-
+cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :centerPoint)
 
 # Define scaling factors
 
 
-# Function to convert geographic coordinates and time to a scaled 4D point
-function event_to_point(time, args..., # e.g., lat, lon, depth
-    ; time_scale=10, # SETME: 1 day is equivalent to 10 km in spatial closeness
-    ref_time=minimum(EQK.eventTime), # the minimum time of target earthquakes
-    converter=latlon_to_xy
-)
-
-    # Convert geographic coordinates to x, y, z
-    point = converter(args...)
-    # Scale time
-    t_scaled = (time - ref_time) * time_scale
-    return [point..., t_scaled]
-end
-
-
 # # Convert catalog events to points
 
-# Create ENU points in a relative cartesian coordinate
+# Create ENU points in a relative cartesian coordinate, against
 
+# against `enu_ref`:
 enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
 transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
@@ -257,8 +244,15 @@ transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
 uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
 
-catalog_points = [event_to_point(row.eventTime, row.eventLat, row.eventLon) for row in eachrow(catalog)]
-catalog_matrix = hcat(catalog_points...)  # Transpose for KDTree
+@assert get_units.(df.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
+@assert get_units.(catalog.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
+
+catalog_points = [get_values(p) for p in catalog.pointENU]
+target_points = [get_values(p) for p in df.pointENU]
+
+# Transpose for KDTree
+catalog_matrix = hcat(catalog_points...)
+target_matrix = hcat(target_points...)
 
 # Build a KDTree for the catalog data
 catalog_tree = KDTree(catalog_matrix)
