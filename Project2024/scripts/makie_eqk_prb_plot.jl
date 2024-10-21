@@ -253,8 +253,8 @@ cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :c
 
 
 
-catalog_points = [get_values(p) for p in catalog.pointENU]
-cluster_centers = [get_values(p) for p in cluster_center.centerPoint]
+catalog_points = [get_values(p, [:x, :y, :z]) for p in catalog.pointENU]
+cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoint]
 
 # Transpose for KDTree
 catalog_matrix = hcat(catalog_points...) # size nd (dimension) × np (point). See https://github.com/KristofferC/NearestNeighbors.jl?tab=readme-ov-file#creating-a-tree
@@ -323,7 +323,11 @@ function eqkprb_plot(dfg1)
 
     if non_target_is_not_empty
         @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
-        eqknontargetplts = fill(data(tmpcatalog) * visual(Scatter; color=:blue) * mapping(:evtx, :eventSize), length(eqkplts))
+        eqknontargetplts = [(
+            (xx0, xx1) = extrema(g.evtx);
+            data(filter(row -> row.evtx >= xx0 && row.evtx <= xx1, tmpcatalog)) * visual(Scatter; color=:blue) * mapping(:evtx, :eventSize))
+
+                            for g in groupby(dfg, problayout)]
     end
 
     f = Figure()
