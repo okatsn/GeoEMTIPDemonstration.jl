@@ -1,1 +1,1 @@
-dir_cwb2023mid(args...) = projectdir("scripts", "CWB2023mid",args...)
+dir_map(args...) = joinpath(dirname(dirname(pathof(GeoEMTIPDemonstration))), "data", "map", args...)
