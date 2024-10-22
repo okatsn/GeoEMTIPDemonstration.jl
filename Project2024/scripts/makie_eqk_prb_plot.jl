@@ -262,7 +262,7 @@ cluster_matrix = hcat(cluster_centers...)
 
 # Build a KDTree for the catalog data
 catalog_tree = KDTree(catalog_matrix) # default leafsize is 10
-nearby_points = inrange(catalog_tree, cluster_matrix, 40) # find points of catalog that are in the range of 40 around cluster center points.
+nearby_points = inrange(catalog_tree, cluster_matrix, 20) # find points of catalog that are in the range of 20 around cluster center points.
 
 insertcols!(cluster_center, :catalog_idx => nearby_points)
 
@@ -276,8 +276,7 @@ clusterid_to_nearby_event_index = Dict([row.clusterId => row.catalog_idx for row
 # FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
 
 frc_days = Day(173) # FIXME: Temp
-get_value(ec::EventCoordinate) = ec.value.val
-get_unit(ec::EventCoordinate) = ec.value |> unit
+
 disallowmissing!(df)
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
@@ -314,7 +313,7 @@ function eqkprb_plot(dfg1)
 
 
 
-    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize) for g in groupby(dfg, problayout)]
+    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)]
 
 
     nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
@@ -325,7 +324,7 @@ function eqkprb_plot(dfg1)
         @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
         eqknontargetplts = [(
             (xx0, xx1) = extrema(g.evtx);
-            data(filter(row -> row.evtx >= xx0 && row.evtx <= xx1, tmpcatalog)) * visual(Scatter; color=:blue) * mapping(:evtx, :eventSize))
+            data(filter(row -> row.evtx >= xx0 && row.evtx <= xx1, tmpcatalog)) * visual(Scatter; color=:blue) * mapping(:evtx, :eventSize => get_value))
 
                             for g in groupby(dfg, problayout)]
     end
@@ -426,7 +425,7 @@ end
 # Loaded table preprocessing
 
 
-for dfg in groupdfs
+for dfg in groupdfs[3:3]
     with_theme(size=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
