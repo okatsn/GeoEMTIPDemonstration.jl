@@ -280,7 +280,11 @@ frc_days = Day(173) # FIXME: Temp
 disallowmissing!(df)
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
-# dfg1 = groupdfs[3]
+# # CHECKPOINT
+# dfg1 = groupdfs[5] # FIXME: to see why the time series is missing
+
+# dfg1 = groupdfs[6] # FIXME: why band that indicate probability low/high looks strange
+# FIXME: This cluster is huge. Can I mark non-target earthquakes as other colors?
 function eqkprb_plot(dfg1)
     nontargetalpha = 0.5
     nontargetcolor = :goldenrod4
