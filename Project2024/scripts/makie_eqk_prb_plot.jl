@@ -193,63 +193,6 @@ transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> 
 transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
 
-
-
-
-# # Event clustering
-
-# Table of target earthquake
-eachevent = groupby(df, :eventId)
-targetcols = [:eventTime, :eventLat, :eventLon]
-EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
-
-
-## Standardization/Normalization
-# normalized radius for DBSCAN
-eqk = @view EQK[!, targetcols]
-eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
-insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
-
-# # A "dictionary" for indexing variable's range, where
-# - `eventTime` is the maximum temporal distance between the earliest and latest target events occurred.
-# - `eventLat` is the maximum spatial distance between the most distant two events in the latitude dimension and unit.
-# - `eventLon` is the maximum spatial distance between the most distant two events in the longitude dimension and unit.
-evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
-
-eqk_crad = Dict( # SETME:
-    "eventTime" => 30.0 * u"d", #days
-    "eventLon" => 0.1u"°", # deg., ~11 km
-    "eventLat" => 0.1u"°",
-) # radius for DBSCAN clustering
-
-latrange = [evtvarrange.eventLon, evtvarrange.eventLat] |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
-
-rrratio_time = (evtvarrange.eventTime / eqk_crad["eventLat"]).val
-rrratio_maxspace = latrange / eqk_crad["eventLat"]
-
-normalize(el::EventSpaceAlgebra.AngularCoordinate) = el.value.val
-function normalize(el::EventSpaceAlgebra.TemporalCoordinate) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
-    newval = (el.value.val - minimum(EQK.eventTime).value.val) /
-             eqk_crad["eventTime"].val * eqk_crad["eventLat"].val
-    newval
-end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
-
-EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
-
-# # Clusterting by dbscan
-dbresult = dbscan(Matrix(EQK_n)', eqk_crad["eventLat"].val)
-insertcols!(EQK, :clusterId => dbresult.assignments)
-
-event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
-
-transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
-
-
-
-
-
-
-
 # Scale the content values by custom units.
 
 uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
@@ -258,11 +201,28 @@ uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
 @assert get_units.(df.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 @assert get_units.(catalog.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
+# # Event clustering
+
+# Table of target earthquake
+eachevent = groupby(df, :eventId)
+EQK = combine(eachevent, :pointENU => first, :eventId => unique; renamecols=false) # unique earthquake events
+
+event_points = [get_values(p) for p in EQK.pointENU]
+targetevent_matrix = hcat(event_points...)
+
+# Clusterting by dbscan
+dbresult = dbscan(targetevent_matrix, 10) # which is 10km/120hrs
+insertcols!(EQK, :clusterId => dbresult.assignments)
+
+event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
+
+transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
+
+
+# # Find all events in catalog that is near to each cluster center.
 cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :centerPoint)
 
 @assert get_units.(cluster_center.centerPoint) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
-
-
 
 catalog_points = [get_values(p, [:x, :y, :z]) for p in catalog.pointENU]
 cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoint]
@@ -451,7 +411,7 @@ end
 # Loaded table preprocessing
 
 
-for dfg in groupdfs[3:3]
+for dfg in groupdfs[4:6]
     with_theme(size=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
