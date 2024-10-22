@@ -58,7 +58,7 @@ end
 # # Load and process Catalog
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
-filter!(:Mag => (x -> x ≥ 5.0), catalog)
+
 
 # Catalog of MagTIP type:
 @chain catalog begin
@@ -130,6 +130,7 @@ transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols
 filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
+catalogM5 = filter(:Mag => (x -> x ≥ 5.0), catalog)
 
 f = with_theme(size=(600, 700)) do
     f = Figure()
@@ -144,7 +145,7 @@ f = with_theme(size=(600, 700)) do
         backgroundcolor=:white,
         limits=((118, 123.6), nothing))
 
-    catalogplot = twmap + data(catalog) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:Mag => magtransform) * mapping(:Lon, :Lat)
+    catalogplot = twmap + data(catalogM5) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:Mag => magtransform) * mapping(:Lon, :Lat)
     gd = draw!(eqkmap, catalogplot)
     colorbar!(f[0, 1:10], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
 
@@ -152,7 +153,7 @@ f = with_theme(size=(600, 700)) do
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
         align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
-    MLrefs = catalog.Mag |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
+    MLrefs = catalogM5.Mag |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
     MLrefy = range(21.4, 23, length=length(MLrefs)) |> collect
 
@@ -252,8 +253,8 @@ cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :c
 
 
 
-catalog_points = [get_values(p) for p in catalog.pointENU]
-cluster_centers = [get_values(p) for p in cluster_center.centerPoint]
+catalog_points = [get_values(p, [:x, :y, :z]) for p in catalog.pointENU]
+cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoint]
 
 # Transpose for KDTree
 catalog_matrix = hcat(catalog_points...) # size nd (dimension) × np (point). See https://github.com/KristofferC/NearestNeighbors.jl?tab=readme-ov-file#creating-a-tree
@@ -261,7 +262,7 @@ cluster_matrix = hcat(cluster_centers...)
 
 # Build a KDTree for the catalog data
 catalog_tree = KDTree(catalog_matrix) # default leafsize is 10
-nearby_points = inrange(catalog_tree, cluster_matrix, 40) # find points of catalog that are in the range of 40 around cluster center points.
+nearby_points = inrange(catalog_tree, cluster_matrix, 20) # find points of catalog that are in the range of 20 around cluster center points.
 
 insertcols!(cluster_center, :catalog_idx => nearby_points)
 
@@ -275,12 +276,19 @@ clusterid_to_nearby_event_index = Dict([row.clusterId => row.catalog_idx for row
 # FIXME: Is it possible to eliminate the T-lead effect (that may cause probability declining artifact)?
 
 frc_days = Day(173) # FIXME: Temp
-get_value(ec::EventCoordinate) = ec.value.val
+
 disallowmissing!(df)
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
-# dfg1 = groupdfs[5]
+# # CHECKPOINT
+# dfg1 = groupdfs[5] # FIXME: to see why the time series is missing
+
+# dfg1 = groupdfs[6] # FIXME: why band that indicate probability low/high looks strange
+# FIXME: This cluster is huge. Can I mark non-target earthquakes as other colors?
 function eqkprb_plot(dfg1)
+    nontargetalpha = 0.5
+    nontargetcolor = :goldenrod4
+
     dfg = deepcopy(dfg1)
 
     tmp = @chain groupby(dfg, :eventId) begin
@@ -289,7 +297,7 @@ function eqkprb_plot(dfg1)
     end
 
     # CHECKPOINT: TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-    transform!(dfg, :dt => ByRow(t -> datetime2julian(t)) => :tx)
+    transform!(dfg, :dt => ByRow(t -> get_value(EventTimeJD(t))) => :tx)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
 
@@ -312,8 +320,27 @@ function eqkprb_plot(dfg1)
 
 
 
-    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize) for g in groupby(dfg, problayout)]
+    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)] # target event scattered at time-series plot grouped by :trail.
 
+
+    nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
+    tmpcatalog = transform(catalog, :eventTime => ByRow(get_value) => :evtx)[nontargetidx, :]
+    non_target_is_not_empty = !isempty(tmpcatalog)
+
+    if non_target_is_not_empty
+        @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
+        tmpcls = [
+            ((xx0, xx1) = extrema(g.evtx);
+            filter(row -> (row.evtx >= xx0 && row.evtx <= xx1), tmpcatalog))
+            for (i, g) in enumerate(groupby(dfg, problayout))
+        ]
+
+        eqknontargetplts = [(
+            (xx0, xx1) = extrema(g.evtx);
+            data(tmpcls[i]) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:evtx, :eventSize => get_value))
+
+                            for (i, g) in enumerate(groupby(dfg, problayout))]
+    end
 
     f = Figure()
     # Draw probability plot
@@ -332,6 +359,9 @@ function eqkprb_plot(dfg1)
     # Draw eqk stars on the right axis
     leftaxs = filter(x -> x isa Axis, f.content)
     rightaxs = OkMakieToolkits.twinaxis.(leftaxs; color=:red, other=(; ylabel="event magnitude", ylabelcolor=:red))
+    if non_target_is_not_empty
+        draw!.(rightaxs, eqknontargetplts)
+    end
     draw!.(rightaxs, eqkplts)
 
     lenax = length(leftaxs)
@@ -382,6 +412,11 @@ function eqkprb_plot(dfg1)
     draw!(ga, twmap)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
+    if non_target_is_not_empty
+        tmpcombined = vcat(tmpcls...) |> unique
+        epi_plt2 = data(tmpcombined) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:eventLon => get_value, :eventLat => get_value)
+        draw!(ga, epi_plt2)
+    end
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
     draw!(ga, epi_plt) # use AoG to plot epicenter to allow setting scatter markers in `with_theme`.
 
@@ -404,7 +439,7 @@ end
 # Loaded table preprocessing
 
 
-for dfg in groupdfs
+for dfg in groupdfs[3:3]
     with_theme(size=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
