@@ -282,6 +282,9 @@ groupdfs = groupby(df, [:clusterId])
 problayout = :trial
 # dfg1 = groupdfs[3]
 function eqkprb_plot(dfg1)
+    nontargetalpha = 0.5
+    nontargetcolor = :goldenrod4
+
     dfg = deepcopy(dfg1)
 
     tmp = @chain groupby(dfg, :eventId) begin
@@ -290,7 +293,7 @@ function eqkprb_plot(dfg1)
     end
 
     # CHECKPOINT: TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
-    transform!(dfg, :dt => ByRow(t -> datetime2julian(t)) => :tx)
+    transform!(dfg, :dt => ByRow(t -> get_value(EventTimeJD(t))) => :tx)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
 
 
@@ -313,7 +316,7 @@ function eqkprb_plot(dfg1)
 
 
 
-    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)]
+    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)] # target event scattered at time-series plot grouped by :trail.
 
 
     nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
@@ -322,11 +325,17 @@ function eqkprb_plot(dfg1)
 
     if non_target_is_not_empty
         @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
+        tmpcls = [
+            ((xx0, xx1) = extrema(g.evtx);
+            filter(row -> (row.evtx >= xx0 && row.evtx <= xx1), tmpcatalog))
+            for (i, g) in enumerate(groupby(dfg, problayout))
+        ]
+
         eqknontargetplts = [(
             (xx0, xx1) = extrema(g.evtx);
-            data(filter(row -> row.evtx >= xx0 && row.evtx <= xx1, tmpcatalog)) * visual(Scatter; color=:blue) * mapping(:evtx, :eventSize => get_value))
+            data(tmpcls[i]) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:evtx, :eventSize => get_value))
 
-                            for g in groupby(dfg, problayout)]
+                            for (i, g) in enumerate(groupby(dfg, problayout))]
     end
 
     f = Figure()
@@ -400,7 +409,8 @@ function eqkprb_plot(dfg1)
 
     epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
     if non_target_is_not_empty
-        epi_plt2 = data(tmpcatalog) * visual(Scatter; color=:blue) * mapping(:eventLon => get_value, :eventLat => get_value)
+        tmpcombined = vcat(tmpcls...) |> unique
+        epi_plt2 = data(tmpcombined) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:eventLon => get_value, :eventLat => get_value)
         draw!(ga, epi_plt2)
     end
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
