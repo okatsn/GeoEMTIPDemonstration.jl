@@ -178,6 +178,24 @@ filter!(row -> row.dt > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not
 
 
 
+
+
+
+# # Convert catalog events to points
+
+# Create ENU points in a relative cartesian coordinate, against
+
+# Reference point: against `enu_ref`:
+enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
+
+transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
+transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> ArbitraryPoint(t, lat, lon, Depth(-1))) => :eventPoint)
+transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
+
+
+
+
+
 # # Event clustering
 
 # Table of target earthquake
@@ -226,20 +244,13 @@ event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
 
 transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
 
-# Define scaling factors
 
 
-# # Convert catalog events to points
 
-# Create ENU points in a relative cartesian coordinate, against
 
-# against `enu_ref`:
-enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
-transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
-transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> ArbitraryPoint(t, lat, lon, Depth(-1))) => :eventPoint)
-transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
+# Scale the content values by custom units.
 
 uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
 uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
@@ -260,7 +271,7 @@ cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoi
 catalog_matrix = hcat(catalog_points...) # size nd (dimension) × np (point). See https://github.com/KristofferC/NearestNeighbors.jl?tab=readme-ov-file#creating-a-tree
 cluster_matrix = hcat(cluster_centers...)
 
-# Build a KDTree for the catalog data
+# # Build a KDTree for the catalog data
 catalog_tree = KDTree(catalog_matrix) # default leafsize is 10
 nearby_points = inrange(catalog_tree, cluster_matrix, 20) # find points of catalog that are in the range of 20 around cluster center points.
 
