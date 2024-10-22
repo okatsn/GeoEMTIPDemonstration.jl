@@ -99,15 +99,7 @@ twmap = data(twshp) * mapping(:geometry) * visual(
 # - Noted that `palettes` must take a `NamedTuple`. For example in `draw(plt, palettes=(color=cgrad(:Paired_4),))`, `color` is not a keyword argument for some internal function; it specify a dimension of the `plt` that was mapped before (e.g., `plt = ... * mapping(color = :foo_bar)...`).
 # - NOTE: `palettes` is deprecated after AoG v0.7. One should use ` scales(Color=(; palette= ...), Layout=(; palette= ...))` instead.
 
-# Categorize :eventId
-# - `eventId` is the hash of eventTimeStr, eventSize, eventLat, ...; see `preprocess_phase_test_eqk.jl` in CWBProjectSummaryDatasets.
-# - This is critical for AlgebraOfGraphics to give a plot of lines where each line is a unique eventId.
-# - Try the followings to figure out:
-#   ```
-#   tmp = append!(DataFrame(x=1:10, y=randn(10), type1=UInt(1), type2="a"), DataFrame(x=1:10, y=randn(10), type1=UInt(2), type2="b"))
-#   data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type1) |> draw
-#   data(tmp) * visual(Lines, colormap=:blues) * mapping(:x, :y) * mapping(color=:type2) |> draw
-#   ```
+
 transform!(df, :eventId => CategoricalArray; renamecols=false)
 
 
@@ -127,7 +119,7 @@ transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols
 
 # Plot Catalog # WARN: catalog is detached from df
 # TODO: Plot events of training and forecasting period separately,
-filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
+# filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
 catalogM5 = filter(:Mag => (x -> x ≥ 5.0), catalog)
@@ -174,66 +166,18 @@ Makie.save("Catalog_M5_map.png", f)
 
 
 # # KEYNOTE: We show only cases after 2022 (it is too much to show all)
-filter!(row -> row.dt > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
+filter!(row -> row.dt > DateTime(2023, 10, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
-# # Event clustering
 
-# Table of target earthquake
-eachevent = groupby(df, :eventId)
-targetcols = [:eventTime, :eventLat, :eventLon]
-EQK = combine(eachevent, [targetcols..., :eventId] .=> unique; renamecols=false) # unique earthquake events
-
-
-## Standardization/Normalization
-# normalized radius for DBSCAN
-eqk = @view EQK[!, targetcols]
-eqk_minmax = combine(eqk, All() .=> (x -> [extrema(x)...]); renamecols=false)
-insertcols!(eqk_minmax, :transform => [:minimum, :maximum])
-
-# # A "dictionary" for indexing variable's range, where
-# - `eventTime` is the maximum temporal distance between the earliest and latest target events occurred.
-# - `eventLat` is the maximum spatial distance between the most distant two events in the latitude dimension and unit.
-# - `eventLon` is the maximum spatial distance between the most distant two events in the longitude dimension and unit.
-evtvarrange = combine(eqk_minmax, Cols(r"event") .=> (x -> diff(x)); renamecols=false) |> eachrow |> only
-
-eqk_crad = Dict( # SETME:
-    "eventTime" => 30.0 * u"d", #days
-    "eventLon" => 0.1u"°", # deg., ~11 km
-    "eventLat" => 0.1u"°",
-) # radius for DBSCAN clustering
-
-latrange = [evtvarrange.eventLon, evtvarrange.eventLat] |> maximum # The maximum dimension of space (in unit degree of latitude or longitude).
-
-rrratio_time = (evtvarrange.eventTime / eqk_crad["eventLat"]).val
-rrratio_maxspace = latrange / eqk_crad["eventLat"]
-
-normalize(el::EventSpaceAlgebra.AngularCoordinate) = el.value.val
-function normalize(el::EventSpaceAlgebra.TemporalCoordinate) # Temporal coordinate will be normalized against the earliest eventTime by the factors defined in `eqk_crad`.
-    newval = (el.value.val - minimum(EQK.eventTime).value.val) /
-             eqk_crad["eventTime"].val * eqk_crad["eventLat"].val
-    newval
-end # the use of `EventSpaceAlgebra` is intended to dispatch different `normalize` method according to the type of `EventSpaceAlgebra.Coordinate`
-
-EQK_n = select(EQK, targetcols .=> ByRow(normalize); renamecols=false)
-
-# # Clusterting by dbscan
-dbresult = dbscan(Matrix(EQK_n)', eqk_crad["eventLat"].val)
-insertcols!(EQK, :clusterId => dbresult.assignments)
-
-event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
-
-transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
-
-# Define scaling factors
 
 
 # # Convert catalog events to points
 
 # Create ENU points in a relative cartesian coordinate, against
 
-# against `enu_ref`:
+# Reference point: against `enu_ref`:
 enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
 transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
@@ -241,17 +185,42 @@ transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> 
 transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
 
+# Scale the content values by custom units.
+
 uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
 uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
 
 @assert get_units.(df.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 @assert get_units.(catalog.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
+
+# SETME
+r_dbscan = 10
+r_kdtree = 30
+# for every 10, it means is 10km/120hrs
+
+# # Event clustering
+
+# Table of target earthquake
+eachevent = groupby(df, :eventId)
+EQK = combine(eachevent, :pointENU => first, :eventId => unique; renamecols=false) # unique earthquake events
+
+event_points = [get_values(p) for p in EQK.pointENU]
+targetevent_matrix = hcat(event_points...)
+
+# Clusterting by dbscan
+dbresult = dbscan(targetevent_matrix, r_dbscan)
+insertcols!(EQK, :clusterId => dbresult.assignments)
+
+event2cluster(eventId) = Dict(EQK.eventId .=> EQK.clusterId)[eventId]
+
+transform!(df, :eventId => ByRow(event2cluster) => :clusterId)
+
+
+# # Find all events in catalog that is near to each cluster center.
 cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :centerPoint)
 
 @assert get_units.(cluster_center.centerPoint) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
-
-
 
 catalog_points = [get_values(p, [:x, :y, :z]) for p in catalog.pointENU]
 cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoint]
@@ -260,9 +229,9 @@ cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoi
 catalog_matrix = hcat(catalog_points...) # size nd (dimension) × np (point). See https://github.com/KristofferC/NearestNeighbors.jl?tab=readme-ov-file#creating-a-tree
 cluster_matrix = hcat(cluster_centers...)
 
-# Build a KDTree for the catalog data
+# # Build a KDTree for the catalog data
 catalog_tree = KDTree(catalog_matrix) # default leafsize is 10
-nearby_points = inrange(catalog_tree, cluster_matrix, 20) # find points of catalog that are in the range of 20 around cluster center points.
+nearby_points = inrange(catalog_tree, cluster_matrix, r_kdtree) # find points of catalog that are in the range of r around cluster center points.
 
 insertcols!(cluster_center, :catalog_idx => nearby_points)
 
@@ -281,24 +250,23 @@ disallowmissing!(df)
 groupdfs = groupby(df, [:clusterId])
 problayout = :trial
 # # CHECKPOINT
-# dfg1 = groupdfs[5] # FIXME: to see why the time series is missing
+# dfg1 = groupdfs[5] # [Issue solved] Time series is missing? A: the probabilities are mainly zeroes.
 
 # dfg1 = groupdfs[6] # FIXME: why band that indicate probability low/high looks strange
 # FIXME: This cluster is huge. Can I mark non-target earthquakes as other colors?
 function eqkprb_plot(dfg1)
-    nontargetalpha = 0.5
-    nontargetcolor = :goldenrod4
+    nontargetalpha = 0.25
+    nontargetcolor = :plum1# :slategray4 # :goldenrod4
+    nontargetstrokecolor = :purple1
 
     dfg = deepcopy(dfg1)
 
-    tmp = @chain groupby(dfg, :eventId) begin
-        combine(:dt => extrema => :t0t1)
-        transform!(:t0t1 => ByRow(t -> minimum([t[1] + frc_days, t[2]])) => :frcend)
-    end
+
 
     # CHECKPOINT: TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
     transform!(dfg, :dt => ByRow(t -> get_value(EventTimeJD(t))) => :tx)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
+    @assert eltype(dfg.eventTime) isa Type{<:EventTimeJD}
 
 
 
@@ -337,7 +305,7 @@ function eqkprb_plot(dfg1)
 
         eqknontargetplts = [(
             (xx0, xx1) = extrema(g.evtx);
-            data(tmpcls[i]) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:evtx, :eventSize => get_value))
+            data(tmpcls[i]) * visual(Scatter; color=nontargetcolor, strokecolor=nontargetstrokecolor, alpha=nontargetalpha) * mapping(:evtx, :eventSize => get_value))
 
                             for (i, g) in enumerate(groupby(dfg, problayout))]
     end
@@ -439,7 +407,7 @@ end
 # Loaded table preprocessing
 
 
-for dfg in groupdfs[3:3]
+for dfg in groupdfs
     with_theme(size=(1000, 700),
         Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
