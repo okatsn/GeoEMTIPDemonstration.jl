@@ -299,6 +299,7 @@ function eqkprb_plot(dfg1)
     # CHECKPOINT: TIP predictions can be larger than today because of the lead time. However, it is better to filter them out to avoid questioning.
     transform!(dfg, :dt => ByRow(t -> get_value(EventTimeJD(t))) => :tx)
     transform!(dfg, :eventTime => ByRow(get_value) => :evtx)
+    @assert eltype(dfg.eventTime)::Type{<:EventTimeJD}
 
 
 
