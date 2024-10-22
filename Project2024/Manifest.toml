@@ -408,9 +408,9 @@ version = "1.0.4"
 
 [[deps.EventSpaceAlgebra]]
 deps = ["Dates", "Distances", "Geodesy", "LinearAlgebra", "Statistics", "Unitful"]
-path = "/home/jovyan/.julia/dev/EventSpaceAlgebra"
+git-tree-sha1 = "436fc2362f6b79902f38f14d4ed509f43062c94c"
 uuid = "8edd2f2a-3081-48b8-b943-5251c412605e"
-version = "0.3.0-DEV"
+version = "0.3.0"
 
 [[deps.ExactPredicates]]
 deps = ["IntervalArithmetic", "Random", "StaticArrays"]

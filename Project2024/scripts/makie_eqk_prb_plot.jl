@@ -281,7 +281,8 @@ function eqkprb_plot(dfg1)
         :trial => unique,
         :prp => unique;
         renamecols=false
-    )
+    ) # KEYNOTE: (2024-10-22) probabilityMean is the probability around one grid size, about 4-9 cells that a radius 14.6261 km could cover.
+    # See `approxGridSize` in MagTIP-2022.
     visline = visual(Lines) * mapping(:tx => identity => "date", :y => identity => "P")
     visband = visual(Band; alpha=0.15) * mapping(:tx, :y_lo, :y_up)
     probplt = data(dfgc) * (visband + visline) * mapping(layout=problayout) * mapping(color=:prp)
