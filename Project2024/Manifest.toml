@@ -147,7 +147,7 @@ version = "0.10.14"
 deps = ["SmallDatasetMaker", "Test"]
 path = "/home/jovyan/.julia/dev/CWBProjectSummaryDatasets"
 uuid = "b38d3104-45cc-42ed-bfee-2aefedd5b40b"
-version = "0.7.2-DEV"
+version = "0.7.2"
 
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]

@@ -50,9 +50,9 @@ transform!(station_location, :code => ByRow(station_location_text_shift) => :Tex
 # # Load all joint-station data here:
 
 df = DataFrame()
-for df0 in Project2024.load_all_trials(PhaseTestEQK())
-    append!(df, df0; cols=:intersect)
-end
+all_trials = Project2024.load_all_trials(PhaseTestEQK())
+append!(df, all_trials.t2)
+append!(df, all_trials.t3)
 
 
 # # Load and process Catalog
@@ -114,7 +114,7 @@ transform!(df, :eventTimeStr => ByRow(t -> EventTimeJD(DateTime(t, "d-u-y H:M:S"
 transform!(df, :eventLat => ByRow(x -> latitude(x)); renamecols=false)
 transform!(df, :eventLon => ByRow(x -> longitude(x)); renamecols=false)
 transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols=false)
-
+transform!(df, :eventDepth => ByRow(Depth); renamecols=false)
 
 
 # Plot Catalog # WARN: catalog is detached from df
@@ -166,7 +166,7 @@ Makie.save("Catalog_M5_map.png", f)
 
 
 # # KEYNOTE: We show only cases after 2022 (it is too much to show all)
-filter!(row -> row.dt > DateTime(2023, 10, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
+filter!(row -> row.dt > DateTime(2020, 10, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
@@ -181,7 +181,7 @@ filter!(row -> row.dt > DateTime(2023, 10, 1), df) # FIXME: Revise this to be no
 enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
 transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
-transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> ArbitraryPoint(t, lat, lon, Depth(-1))) => :eventPoint)
+transform!(df, Cols(:eventTime, :eventLat, :eventLon, :eventDepth) => ByRow((t, lat, lon, d) -> ArbitraryPoint(t, lat, lon, d)) => :eventPoint)
 transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
 
@@ -195,8 +195,8 @@ uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
 
 
 # SETME
-r_dbscan = 10
-r_kdtree = 30
+r_dbscan = 30
+r_kdtree = 50
 # for every 10, it means is 10km/120hrs
 
 # # Event clustering
