@@ -199,6 +199,29 @@ r_dbscan = 30
 r_kdtree = 50
 # for every 10, it means is 10km/120hrs
 
+
+let # Inspect the discrepancies between ENU's altitude and the original event Depth.
+    tmp = select(df, Cols(:eventDepth, :pointENU) => ByRow((a, b) -> abs(abs(a.value) - abs(b.z))) => :DIFF)
+
+    ff = Figure(; size=(2000, 1000))
+    ax = Axis(ff[1, 1])
+    lines!(ax, 1:nrow(df), -1 .* get_value.(df.eventDepth))
+    lines!(ax, 1:nrow(df), get_value.(df.pointENU, :z), linestyle=:dot)
+
+    ax2 = Axis(ff[2, 1])
+    lines!(tmp.DIFF)
+    ff
+
+    fff = Figure(; size=(800, 800))
+    ax3 = Axis(fff[1, 1])
+    idperm = sortperm(tmp.DIFF)
+    scatter!(ax3, get_value.(df.eventDepth)[idperm], tmp.DIFF[idperm])
+    fff
+
+
+    df[tmp.DIFF.>4u"km", :] |> describe
+end
+
 # # Event clustering
 
 # Table of target earthquake
