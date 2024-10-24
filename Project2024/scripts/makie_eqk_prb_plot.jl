@@ -322,7 +322,7 @@ function eqkprb_plot(dfg1)
     if non_target_is_not_empty
         @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
         tmpcls = [
-            ((xx0, xx1) = extrema(g.evtx);
+            ((xx0, xx1) = extrema(g.tx); # KEYNOTE: tx is the time stamps of probabilities, whereas evtx is the time stamps of events in the cluster.
             filter(row -> (row.evtx >= xx0 && row.evtx <= xx1), tmpcatalog))
             for (i, g) in enumerate(groupby(dfg, problayout))
         ]
