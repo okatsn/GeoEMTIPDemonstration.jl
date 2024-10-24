@@ -58,10 +58,11 @@ append!(df, all_trials.t3)
 # # Load and process Catalog
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag3", "Catalog")
+catalogM4 = filter(row -> row.M_L ≥ 4, catalog)
 
 
 # Catalog of MagTIP type:
-@chain catalog begin
+@chain catalogM4 begin
     # select!(Not(:DateTime), :DateTime => :DateTimeStr)
     # transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false) # If the time field is in a correct format, it will automatically load as DateTime in the DataFrame.
     transform!(:time => ByRow(EventTimeJD) => :eventTime)
@@ -119,10 +120,10 @@ transform!(df, :eventDepth => ByRow(Depth); renamecols=false)
 
 # Plot Catalog # WARN: catalog is detached from df
 # TODO: Plot events of training and forecasting period separately,
-# filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
+# filter!(:time => select_from_train(extrema(df.dt)), catalogM4) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
 magtransform = x -> 7 + (x - 5) * 5 # transform M_L to markersize on the plot
-catalogM5 = filter(:M_L => (x -> x ≥ 5.0), catalog)
+catalogM5 = filter(:M_L => (x -> x ≥ 5.0), catalogM4)
 
 f = with_theme(size=(600, 700)) do
     f = Figure()
@@ -180,7 +181,7 @@ filter!(row -> row.dt > DateTime(2020, 10, 1), df) # FIXME: Revise this to be no
 # Reference point: against `enu_ref`:
 enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
-transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
+transform!(catalogM4, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 transform!(df, Cols(:eventTime, :eventLat, :eventLon, :eventDepth) => ByRow((t, lat, lon, d) -> ArbitraryPoint(t, lat, lon, d)) => :eventPoint)
 transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
@@ -188,10 +189,10 @@ transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 # Scale the content values by custom units.
 
 uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
-uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
+uconvert!.(Ref(u"km"), Ref(u"hr12"), catalogM4.pointENU)
 
 @assert get_units.(df.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
-@assert get_units.(catalog.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
+@assert get_units.(catalogM4.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
 
 # SETME
@@ -245,7 +246,7 @@ cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :c
 
 @assert get_units.(cluster_center.centerPoint) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
-catalog_points = [get_values(p, [:x, :y, :z]) for p in catalog.pointENU]
+catalog_points = [get_values(p, [:x, :y, :z]) for p in catalogM4.pointENU]
 cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoint]
 
 # Transpose for KDTree
@@ -316,7 +317,7 @@ function eqkprb_plot(dfg1)
 
 
     nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
-    tmpcatalog = transform(catalog, :eventTime => ByRow(get_value) => :evtx)[nontargetidx, :]
+    tmpcatalog = transform(catalogM4, :eventTime => ByRow(get_value) => :evtx)[nontargetidx, :]
     non_target_is_not_empty = !isempty(tmpcatalog)
 
     if non_target_is_not_empty
