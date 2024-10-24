@@ -167,7 +167,7 @@ Makie.save("Catalog_M5_map.png", f)
 
 
 # # KEYNOTE: We show only cases after 2022 (it is too much to show all)
-filter!(row -> row.dt > DateTime(2020, 10, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
+filter!(row -> row.dt > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
@@ -196,8 +196,8 @@ uconvert!.(Ref(u"km"), Ref(u"hr12"), catalogM4.pointENU)
 
 
 # SETME
-r_dbscan = 30
-r_kdtree = 50
+r_dbscan = 10
+r_kdtree = 30
 # for every 10, it means is 10km/120hrs
 
 
