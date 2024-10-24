@@ -279,9 +279,13 @@ problayout = :trial
 # dfg1 = groupdfs[6] # FIXME: why band that indicate probability low/high looks strange
 # FIXME: This cluster is huge. Can I mark non-target earthquakes as other colors?
 function eqkprb_plot(dfg1)
-    nontargetalpha = 0.25
-    nontargetcolor = :plum1# :slategray4 # :goldenrod4
-    nontargetstrokecolor = :purple1
+    # SETME
+    targetscatterargs = (marker=:star5, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red, markersize=15,)
+    nontargetscatterargs = (alpha=0.7, markersize=5,
+        color=:yellow,  # :transparent, # (:plum, 0.0), # :slategray4 # :goldenrod4
+        strokecolor=(:red, 1.0),
+        strokewidth=0.5)
+
 
     dfg = deepcopy(dfg1)
 
@@ -313,7 +317,7 @@ function eqkprb_plot(dfg1)
 
 
 
-    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)] # target event scattered at time-series plot grouped by :trail.
+    eqkplts = [data(g) * visual(Scatter; targetscatterargs...) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)] # target event scattered at time-series plot grouped by :trail.
 
 
     nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
@@ -330,7 +334,7 @@ function eqkprb_plot(dfg1)
 
         eqknontargetplts = [(
             (xx0, xx1) = extrema(g.evtx);
-            data(tmpcls[i]) * visual(Scatter; color=nontargetcolor, strokecolor=nontargetstrokecolor, alpha=nontargetalpha) * mapping(:evtx, :eventSize => get_value))
+            data(tmpcls[i]) * visual(Scatter; nontargetscatterargs...) * mapping(:evtx, :eventSize => get_value))
 
                             for (i, g) in enumerate(groupby(dfg, problayout))]
     end
@@ -404,10 +408,10 @@ function eqkprb_plot(dfg1)
         ylabel="Latitude")
     draw!(ga, twmap)
 
-    epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
+    epi_plt = data(dfg) * visual(Scatter; targetscatterargs...) * mapping(:eventLon => get_value, :eventLat => get_value)
     if non_target_is_not_empty
         tmpcombined = vcat(tmpcls...) |> unique
-        epi_plt2 = data(tmpcombined) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:eventLon => get_value, :eventLat => get_value)
+        epi_plt2 = data(tmpcombined) * visual(Scatter; nontargetscatterargs...) * mapping(:eventLon => get_value, :eventLat => get_value)
         draw!(ga, epi_plt2)
     end
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
@@ -434,14 +438,15 @@ end
 
 for dfg in groupdfs
     with_theme(size=(1000, 700),
-        Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
+        Scatter=(;),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
+        Axis=(; backgroundcolor=:white)
     ) do
 
         f = eqkprb_plot(dfg)
         display(f)
         id = dfg.clusterId |> unique |> only
         (dt0, dt1) = DateTime.(extrema(dfg.eventTime)) .|> (d -> floor(d, Day)) .|> Date .|> string
-        Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
+        # Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
     end
 end
