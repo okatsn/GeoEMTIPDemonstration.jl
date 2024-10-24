@@ -1,7 +1,7 @@
 using DataFrames, CSV
 using AlgebraOfGraphics
 # import CairoMakie
-using WGLMakie
+using CairoMakie
 using ColorSchemes
 using Chain
 using Statistics
@@ -344,7 +344,7 @@ function eqkprb_plot(dfg1)
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
     # linecolors = :matter
     # in palettes: color=linecolors,
-    pprob = draw!(f[:, :], probplt, scales(Color=(; palette=WGLMakie.categorical_colors(:Set1_4, 4)),
+    pprob = draw!(f[:, :], probplt, scales(Color=(; palette=CairoMakie.categorical_colors(:Set1_4, 4)),
         Layout=(; palette=[(i, 1) for i in 1:lenlayout]) # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
         # What is a palette: https://aog.makie.org/stable/gallery/gallery/scales/custom_scales/#custom_scales
     ))
