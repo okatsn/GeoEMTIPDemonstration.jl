@@ -53,6 +53,10 @@ for dfi in [df23, df24, df24a]
     append!(df, dfi; promote=true)
 end
 
+# # Train-Test time span plot
+
+TTP23a = TrainTestPartition23a(unique(df.frc), 3)
+(ax0N, f0Nyr) = figureplot(TTP23a; size=(700, 400))
 
 
 # NEQ summary table
