@@ -95,7 +95,7 @@ P = prep202304!(df)
 transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y, x)) => :frc_ind_frc)
 # Colors:
 
-CF23 = ColorsFigure23(P)
+CF23 = ColorsFigure23(P; prpcolor=Project2024.noredDark2.colors)
 @assert isequal(P.table, df)
 
 # Scales
