@@ -20,7 +20,7 @@ function figureplot(MO23a::MolchanComposite23a)
     randlinekwargs = (color="red", linestyle=:dashdot)
     randguess = data((x=[0, 1], y=[1, 0])) * visual(Lines; randlinekwargs...) * mapping(:x => "alarmed rate", :y => "missing rate")
 
-    fmolall = Figure(; resolution=(750, 800))
+    fmolall = Figure(; size=(750, 800))
     ftop = fmolall[1, 1] = GridLayout(1, 2)
     fbtm = fmolall[2, 1] = GridLayout(1, 2)
     molall = data(df) * visual(Scatter, markersize=6, colormap=uniqcolors_prp) * xymap * mapping(color=:prp_ind => "Filter") + randguess
