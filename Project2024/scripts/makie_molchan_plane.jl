@@ -73,15 +73,16 @@ end
 # #
 
 # SETME: Parameter settings:
-whichalpha = 0.32
+whichalphas = [0.32, 0.05]
+confidence68 = 0.32
 
 uniqueonly(x) = x |> unique |> only
 
-fdperc = "$(Int(round((1-whichalpha) * 100)))%"
+fdpercs = ["$(Int(round((1-α) * 100)))%" for α in whichalphas]
 
 transform!(df,
-    :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_high,
-    :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n); init=-Inf)) => :DCB_low,
+    :NEQ_min => ByRow(n -> maximum(getdcb(confidence68, n); init=-Inf)) => :DCB_high,
+    :NEQ_max => ByRow(n -> maximum(getdcb(confidence68, n); init=-Inf)) => :DCB_low,
     # init = -Inf is required since the result of getdcb (from molchancb) might be an empty vector.
 ) # KEYNOTE: It will be super slow (due to large N involved in factorial calculations) if directly uses NEQ_max => ByRow(molchancb).
 
@@ -244,8 +245,10 @@ end
 dfcb2a = @chain dfcb2 begin # separated since it is super slow
     transform(Cols(r"NEQ") .=> ByRow(BigInt); renamecols=false)
     transform(
-        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_low,
-        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_high
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_low_68,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_high_68,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_low_95,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_high_95,
     )
     select(:prp, :trial, :DCB_low, :DCB_high)
 end
@@ -260,27 +263,43 @@ dropnanmissing!(dfcb2)
 
 
 f2 = Figure(; size=(800, 550))
+
+function dclevels(c; low=:DCB_low_99, high=:DCB_high_99)
+    clevel = match.(Ref(r"\d+"), string.(high,low)) |> length
+    strlegend(dccolor1) = "$clevel% Confidence boundary of fitting degree for minimum/maximum number of target EQKs"
+
+    return (plt = cusvis(c.clow) * mapping(x, low) + cusvis(c.chigh) * mapping(x, high), description = )
+end
 let dfcb = dfcb2
+    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+    dccolors1 = (clow=:gray95, chigh=:gray81, alpha=0.32)
+    dccolors2 = (clow=:springgreen1, chigh=:springgreen3, alpha=0.95)
+
+    clegend(c) = [
+        LineElement(color=c.clow, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
+        LineElement(color=c.chigh, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
+        MarkerElement(color=[c.clow, c.chigh], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])
+    ]
+
     x = :prp => repus => xlabel2
     dcbars = (
         visual(BarPlot; color=:royalblue4) *
         mapping(x, :DC_summary => ylabel2)
     )
 
-    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
-    dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
+    dclevels1 = dclevels(dccolors1; low=:DCB_low_68, high=:DCB_high_68)
+    dclevels2 = dclevels(dccolors2; low=:DCB_low_95, high=:DCB_high_95)
 
     errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
               visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
 
-    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels1 + dclevels2) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
     Legend(f2[2, :],
         [
-            [
-                LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
-                LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
-                MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])],
+            clegend(dccolors1),
+            clegend(dccolors2),
             [
                 PolyElement(color=:royalblue4, strokecolor=:black, strokewidth=0.5,
                     points=Point2f[(0, 0.8), (1, 0.8), (1, 0), (0, 0)]),
@@ -288,7 +307,9 @@ let dfcb = dfcb2
                 MarkerElement(color=:cadetblue3, markersize=6, marker=:circle, points=Point2f[(0.5, 0.8)])
             ]
         ],
-        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+        [
+            strlegend(dccolor1),
+            strlegend(dccolor2),
             "Fitting degree with error concerning minimum/maximum number of target EQKs"], ;
         labelsize=15,
         valign=:bottom, tellheight=true
@@ -433,12 +454,13 @@ f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "Molchan
 display(f5c)
 display(f5s)
 
-visual_heatmap = visual(Heatmap) * AlgebraOfGraphics.density() # please refer:
+visual_heatmap = visual(Histogram) # please refer:
+visual_histogram2d = histogram()
 # AlgebraOfGraphics just needs method definitions for `aesthetic_mapping`,
 # this is why:
 # - `visual(Heatmap)` without `AlgebraOfGraphics.density()` won't work (heatmap takes x, y, and z_color)
 # - `hexbin` won't work.
-f5h = let aog_layer = molchan_all_frc * (visual_heatmap) + randguess
+f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     f51res = (size=(800, 700),)
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f51res...)
