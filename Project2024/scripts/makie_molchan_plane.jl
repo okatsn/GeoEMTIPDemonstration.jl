@@ -199,17 +199,22 @@ calcfd(τ, τ₀, μ, μ₀) = 1 - τ / τ₀ - μ / μ₀
 
 dfcb2 = @chain df begin
     # Calculate total number of earthquakes and alarmed area
-    # !!! note
-    #     To calculate overall fitting degree, sum over the number of EQK and area of TIP is required.
-    #     However, MagTIP-2022's `jointstation` did not yet return nEQK (number of target earthquakes)
-    #     and areaTIP (spatial TIP area) for each model (out of total 500 permutations).
-    #     I have no choice but use `NEQ_min`/`_max` (from MagTIP-2022's `jointstation_summary` with
-    #     'CalculateNEQK' option) to "restore" the number of hitted/missed earthquakes using
-    #     MissingRateForecasting and `NEQ_min`/`_max` (minimum/maximum possible number of target earthquakes).
+    # KEYNOTE:
+    # - To calculate overall fitting degree, sum over the number of EQK and area of TIP is required.
+    #   However, MagTIP-2022's `jointstation` did not yet return nEQK (number of target earthquakes)
+    #   and areaTIP (spatial TIP area) for each model (out of total 500 permutations).
+    #   I have no choice but use `NEQ_min`/`_max` (from MagTIP-2022's `jointstation_summary` with
+    #   'CalculateNEQK' option) to "restore" the number of hitted/missed earthquakes using
+    #   MissingRateForecasting and `NEQ_min`/`_max` (minimum/maximum possible number of target earthquakes).
+    # - Because the true `total_area` of each forecasting phase could vary a little, thus
+    #   the column is renamed as `pseudoTotal_area` to avoid misleading.
+    # - Thus, the `DC_summary` is calculated based on averaged alarmed rate, rather than
+    #   alarmed rate subdivided by total area (which is in fact unknown/not saved).
+    #
     transform([:MissingRateForecasting, :NEQ_min] => ByRow((m, n) -> n * m) => :missed_min)
     transform([:MissingRateForecasting, :NEQ_max] => ByRow((m, n) -> n * m) => :missed_max)
     transform([:AlarmedRateForecasting, :frc] => ByRow((τ, t) -> τ * dtstr2nday(t)) => :alarmed_area)
-    transform(:frc => ByRow(dtstr2nday) => :total_area)
+    transform(:frc => ByRow(dtstr2nday) => :pseudoTotal_area)
     groupby([:frc, :prp, :trial])
     combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> mean; renamecols=false)
     # NEQ must be integer, since in each frc, prp and trial, NEQ should be identical.
@@ -217,8 +222,8 @@ dfcb2 = @chain df begin
     #
     groupby([:prp, :trial])
     combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> sum, ; renamecols=false)
-    transform([:alarmed_area, :total_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
-    transform([:alarmed_area, :total_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
+    transform([:alarmed_area, :pseudoTotal_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
+    transform([:alarmed_area, :pseudoTotal_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
     # !!! warning
     #     It should be noticed that here I assume spatial TIP area is identical accross frc.
     transform(AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
