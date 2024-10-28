@@ -140,6 +140,7 @@ end # Add left, top and bottom super labels.
 # KEYNOTE: About fitting degree of the training phase:
 # - Previously, the fitting of training phase is conducted via plotEQK1.m
 #   - You can only calculate the fitting of the models of same "rank". E.g., best model (rank 1) of every station.
+#   - Noted that the results is very different from joint-station fitting degree, even if you "add them all".
 # - The 500 sets of indices of permutation in the jointstation step has not (and never) been saved.
 # - So far there is no way to derive the true fitting degree of the
 #   "training phase "of the 500 sets of jointstation parameters that
