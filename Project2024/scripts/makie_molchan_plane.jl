@@ -425,15 +425,46 @@ xymap = mapping(
 visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8, labels=false)
 visual_scatter = visual(Scatter, markersize=5, alpha=0.3) * mapping(marker=:trial)
 
-
-molchan_all_frc = data(P.table) * xymap * mapping(color=:trial) *
-                  mapping(layout=:prp => "filter")
+molchan_all_frc = data(P.table) * xymap * mapping(col=:trial) *
+                  mapping(row=:prp => "filter")
 
 f5c = fig5_molchan_by_prp(molchan_all_frc * (visual_contour + visual_scatter) + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
 
 display(f5c)
 display(f5s)
+
+visual_heatmap = visual(Heatmap) * AlgebraOfGraphics.density() # please refer:
+# AlgebraOfGraphics just needs method definitions for `aesthetic_mapping`,
+# this is why:
+# - `visual(Heatmap)` without `AlgebraOfGraphics.density()` won't work (heatmap takes x, y, and z_color)
+# - `hexbin` won't work.
+f5h = let aog_layer = molchan_all_frc * (visual_heatmap) + randguess
+    f51res = (size=(800, 700),)
+    f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
+    f5 = Figure(; f51res...)
+
+    # # KEYNOTE: `set_aog_color_palette!` should be deprecated since color aesthetic won't be "pulled in via the theme" after AoG v0.7.
+    # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+
+    plt5 = draw!(
+        f5[1, 1],
+        aog_layer,
+        scales(Color=(; colormap=(:linear_wcmr_100_45_c42_n256), colorrange=(0, 5))); # https://aog.makie.org/stable/generated/penguins/#Smooth-density-plots
+        axis=(f5sckwargs..., limits=(xylimits, xylimits),
+            xgridwidth=0.1,
+            ygridwidth=0.1)
+    )
+    AlgebraOfGraphics.legend!(f5[1, 2], plt5)
+    # Makie.save(target_file, f5)
+    display(f5)
+    f5
+end
+
+# CHECKPOINT: Move grid to the front
+# https://discourse.julialang.org/t/how-to-add-grid-lines-on-top-of-a-heatmap-in-makie/77578/2
+
+
 
 f5res = (size=(800, 700),)
 f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
