@@ -137,6 +137,14 @@ end # Add left, top and bottom super labels.
 
 # # Fitting Degree
 # combined DataFrame for plot
+# KEYNOTE: About fitting degree of the training phase:
+# - Previously, the fitting of training phase is conducted via plotEQK1.m
+#   - You can only calculate the fitting of the models of same "rank". E.g., best model (rank 1) of every station.
+# - The 500 sets of indices of permutation in the jointstation step has not (and never) been saved.
+# - So far there is no way to derive the true fitting degree of the
+#   "training phase "of the 500 sets of jointstation parameters that
+#   are used for forecasting, because those necessary detailed variables have
+#   never been saved.
 dfcb = combine(groupby(df, [:frc_ind, :frc, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
 dropnanmissing!(dfcb)
 
