@@ -105,7 +105,7 @@ CF23 = ColorsFigure23(P; prpcolor=Project2024.noredDark2.colors)
 # Scales
 # # This is new after AoG v0.7. Please refer https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
 scales_prp = scales(Color=(; palette=CF23.prp.colormap, categories=CF23.prp.colortag))
-scales_trial = scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag))
+
 scales_frc = scales(;
     bar_rainbowcolor=(
         Color = (palette=CF23.frc.colormap, categories=CF23.frc.colortag)
@@ -405,7 +405,6 @@ function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, tar
     plt5 = draw!(
         f5[1, 1],
         aog_layer,
-        scales_trial;
         axis=(f5sckwargs..., limits=(xylimits, xylimits))
     )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
@@ -465,39 +464,8 @@ end
 # https://discourse.julialang.org/t/how-to-add-grid-lines-on-top-of-a-heatmap-in-makie/77578/2
 
 
-
-f5res = (size=(800, 700),)
-f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
-
-densitykwargs = (bandwidth=0.01, boundary=(-0.1, 1.1)) # KEYNOTE: `visual(Density)` failed using AoG v0.8.0 and Makie v0.21.6 at the step of generate legend ("ERROR: MethodError: no method matching legend_elements(::Type{Plot{…}}, ::Dictionaries.Dictionary{Symbol, Any}, ::Dictionaries.Dictionary{Union{…}, Any})")
-
-ratedensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
-f5a = draw(ratedensity * mapping(:AlarmedRateForecasting),
-    scales_trial;
-    axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
-Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
-
-# AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
-
-f5b = draw(ratedensity * mapping(:MissingRateForecasting), scales_trial; axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
-Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
-
-
-display(f5a)
-display(f5b)
-
 # KEYNOTE:
 # - When scatter points concentrates at one or a few values, RainClouds are ugly, and Density & Density-related (e.g., Violin) goes wrong and misleading.
 # - I found no way to set AlgebraOfGraphics.histogram or .density to plot horizontally (the :direction argument for Hist and Density).
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
 # `AlgebraOfGraphic.density` use `KernelDensity.kde((df.AlarmedRateForecasting, df.MissingRateForecasting))`
-
-
-# dfa = groupby(P.table, :trial)[(trial = "GM", )]
-
-# dfan = dropnanmissing!(DataFrame(deepcopy(dfa)))
-
-# be = KernelDensity.kde((dfan.AlarmedRateForecasting, dfan.MissingRateForecasting))
-# # Molchan diagram
-# Keys for AOG:
-# - [How to combine AlgebraOfGraphics with plain Makie plots?](https://aog.makie.org/stable/FAQs/#How-to-combine-AlgebraOfGraphics-with-plain-Makie-plots?)
