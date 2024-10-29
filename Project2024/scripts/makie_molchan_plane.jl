@@ -248,23 +248,25 @@ dfcb2a = @chain dfcb2 begin # separated since it is super slow
         :NEQ_min => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_high_68,
         :NEQ_max => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_low_95,
         :NEQ_min => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_high_95,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.10, n), init=-Inf)) => :DCB_low_90,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.10, n), init=-Inf)) => :DCB_high_90,
     )
     select(:prp, :trial, Cols(r"DCB\_"))
 end
 
-dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
+dfcb2b = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
 
 # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
 
 
-dropnanmissing!(dfcb2)
+dropnanmissing!(dfcb2b)
 
 
 f2 = Figure(; size=(800, 550))
 
 
-let dfcb = dfcb2
+let dfcb = dfcb2b
 
     dccolors1 = (clow=:springgreen1, chigh=:springgreen3)
     dccolors2 = (clow=:yellow2, chigh=:goldenrod1)
@@ -295,8 +297,12 @@ let dfcb = dfcb2
     )
 
 
-    dclevels1 = dclevels(dccolors1; low=:DCB_low_68, high=:DCB_high_68)
-    dclevels2 = dclevels(dccolors2; low=:DCB_low_95, high=:DCB_high_95)
+    dclevels1 = dclevels(dccolors1;
+        low=:DCB_low_68,
+        high=:DCB_high_68)
+    dclevels2 = dclevels(dccolors2;
+        low=:DCB_low_90,
+        high=:DCB_high_90)
 
     errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
               visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
