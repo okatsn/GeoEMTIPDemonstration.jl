@@ -475,7 +475,10 @@ display(f5s)
 # - `filled_contours * density()` don't work
 
 
-visual_histogram2d = histogram(bins=30) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
+visual_histogram2d = histogram(
+    bins=range(0, 1.0001, # KEYNOTE: Ensure the uppermost edges includes points at 1.0. Without doing so (assigning a slightly larger number 1.0001 rather than 1.0), those at 1.0 won't be counted.
+        length=20)
+) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
 # - No normalization because every subplot should have exactly the same total counts (500 permutations * 12 phases).
 
 f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
@@ -516,9 +519,7 @@ f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     colorbar!(right, plt5)
 
     display(f5)
-    f5
     # Makie.save(target_file, f5)
-
 end
 
 
