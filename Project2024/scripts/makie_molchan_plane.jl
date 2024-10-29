@@ -266,8 +266,9 @@ f2 = Figure(; size=(800, 550))
 
 let dfcb = dfcb2
 
-    dccolors1 = (clow=:gray95, chigh=:gray81)
-    dccolors2 = (clow=:springgreen1, chigh=:springgreen3)
+    dccolors1 = (clow=:springgreen1, chigh=:springgreen3)
+    dccolors2 = (clow=:yellow2, chigh=:goldenrod1)
+
 
 
 
