@@ -1,7 +1,7 @@
 using DataFrames, CSV
 using AlgebraOfGraphics
 # import CairoMakie
-using WGLMakie
+using CairoMakie
 using ColorSchemes
 using Chain
 using Statistics
@@ -50,25 +50,26 @@ transform!(station_location, :code => ByRow(station_location_text_shift) => :Tex
 # # Load all joint-station data here:
 
 df = DataFrame()
-for df0 in Project2024.load_all_trials(PhaseTestEQK())
-    append!(df, df0; cols=:intersect)
-end
+all_trials = Project2024.load_all_trials(PhaseTestEQK())
+append!(df, all_trials.t2)
+append!(df, all_trials.t3)
 
 
 # # Load and process Catalog
 
-catalog = CWBProjectSummaryDatasets.dataset("EventMag4", "Catalog")
+catalog = CWBProjectSummaryDatasets.dataset("EventMag3", "Catalog")
+catalogM4 = filter(row -> row.M_L ≥ 4, catalog)
 
 
 # Catalog of MagTIP type:
-@chain catalog begin
-    select!(Not(:DateTime), :DateTime => :DateTimeStr)
-    transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false)
+@chain catalogM4 begin
+    # select!(Not(:DateTime), :DateTime => :DateTimeStr)
+    # transform!(:time => (ByRow(t -> DateTime(t, "yyyy/mm/dd HH:MM"))); renamecols=false) # If the time field is in a correct format, it will automatically load as DateTime in the DataFrame.
     transform!(:time => ByRow(EventTimeJD) => :eventTime)
     transform!(:time => ByRow(t -> datetime2julian(t)) => :dt_julian)
     transform!(:Lat => ByRow(latitude) => :eventLat)
     transform!(:Lon => ByRow(longitude) => :eventLon)
-    transform!(:Mag => ByRow(EventMagnitude{RichterMagnitude}) => :eventSize)
+    transform!(:M_L => ByRow(EventMagnitude{RichterMagnitude}) => :eventSize)
     transform!(:Depth => ByRow(Depth) => :eventDepth)
     transform!(Cols(:eventTime, :eventLat, :eventLon, :eventSize, :eventDepth) => ByRow(EventPoint) => :eventPoint)
 end
@@ -114,15 +115,15 @@ transform!(df, :eventTimeStr => ByRow(t -> EventTimeJD(DateTime(t, "d-u-y H:M:S"
 transform!(df, :eventLat => ByRow(x -> latitude(x)); renamecols=false)
 transform!(df, :eventLon => ByRow(x -> longitude(x)); renamecols=false)
 transform!(df, :eventSize => ByRow(EventMagnitude{RichterMagnitude}); renamecols=false)
-
+transform!(df, :eventDepth => ByRow(Depth); renamecols=false)
 
 
 # Plot Catalog # WARN: catalog is detached from df
 # TODO: Plot events of training and forecasting period separately,
-# filter!(:time => select_from_train(extrema(df.dt)), catalog) # (Optional) Remove excessive earthquakes.
+# filter!(:time => select_from_train(extrema(df.dt)), catalogM4) # (Optional) Remove excessive earthquakes.
 tkformat = v -> LaTeXString.(string.(round.(v, digits=2)) .* L"^\circ")
-magtransform = x -> 7 + (x - 5) * 5 # transform Mag to markersize on the plot
-catalogM5 = filter(:Mag => (x -> x ≥ 5.0), catalog)
+magtransform = x -> 7 + (x - 5) * 5 # transform M_L to markersize on the plot
+catalogM5 = filter(:M_L => (x -> x ≥ 5.0), catalogM4)
 
 f = with_theme(size=(600, 700)) do
     f = Figure()
@@ -137,7 +138,7 @@ f = with_theme(size=(600, 700)) do
         backgroundcolor=:white,
         limits=((118, 123.6), nothing))
 
-    catalogplot = twmap + data(catalogM5) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:Mag => magtransform) * mapping(:Lon, :Lat)
+    catalogplot = twmap + data(catalogM5) * visual(Scatter; colormap=:Spectral_4) * mapping(color=:dt_julian => "DateTime") * mapping(markersize=:M_L => magtransform) * mapping(:Lon, :Lat)
     gd = draw!(eqkmap, catalogplot)
     colorbar!(f[0, 1:10], gd; tickformat=(x -> ∘(string, Date, julian2datetime).(x)), label="Event Date", vertical=false)
 
@@ -145,7 +146,7 @@ f = with_theme(size=(600, 700)) do
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
         align=station_location.TextAlign, offset=GeoEMTIPDemonstration.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
-    MLrefs = catalogM5.Mag |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
+    MLrefs = catalogM5.M_L |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
     MLrefy = range(21.4, 23, length=length(MLrefs)) |> collect
 
@@ -166,7 +167,7 @@ Makie.save("Catalog_M5_map.png", f)
 
 
 # # KEYNOTE: We show only cases after 2022 (it is too much to show all)
-filter!(row -> row.dt > DateTime(2023, 10, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
+filter!(row -> row.dt > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
@@ -180,24 +181,47 @@ filter!(row -> row.dt > DateTime(2023, 10, 1), df) # FIXME: Revise this to be no
 # Reference point: against `enu_ref`:
 enu_ref = ArbitraryPoint(minimum(df.eventTime), latitude(23.9740), longitude(120.9798), Depth(0))
 
-transform!(catalog, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
-transform!(df, Cols(:eventTime, :eventLat, :eventLon) => ByRow((t, lat, lon) -> ArbitraryPoint(t, lat, lon, Depth(-1))) => :eventPoint)
+transform!(catalogM4, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
+transform!(df, Cols(:eventTime, :eventLat, :eventLon, :eventDepth) => ByRow((t, lat, lon, d) -> ArbitraryPoint(t, lat, lon, d)) => :eventPoint)
 transform!(df, :eventPoint => ByRow(e -> XYZT(e, enu_ref)) => :pointENU)
 
 
 # Scale the content values by custom units.
 
 uconvert!.(Ref(u"km"), Ref(u"hr12"), df.pointENU)
-uconvert!.(Ref(u"km"), Ref(u"hr12"), catalog.pointENU)
+uconvert!.(Ref(u"km"), Ref(u"hr12"), catalogM4.pointENU)
 
 @assert get_units.(df.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
-@assert get_units.(catalog.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
+@assert get_units.(catalogM4.pointENU) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
 
 # SETME
 r_dbscan = 10
 r_kdtree = 30
 # for every 10, it means is 10km/120hrs
+
+
+let # Inspect the discrepancies between ENU's altitude and the original event Depth.
+    tmp = select(df, Cols(:eventDepth, :pointENU) => ByRow((a, b) -> abs(abs(a.value) - abs(b.z))) => :DIFF)
+
+    ff = Figure(; size=(2000, 1000))
+    ax = Axis(ff[1, 1])
+    lines!(ax, 1:nrow(df), -1 .* get_value.(df.eventDepth))
+    lines!(ax, 1:nrow(df), get_value.(df.pointENU, :z), linestyle=:dot)
+
+    ax2 = Axis(ff[2, 1])
+    lines!(tmp.DIFF)
+    ff
+
+    fff = Figure(; size=(800, 800))
+    ax3 = Axis(fff[1, 1])
+    idperm = sortperm(tmp.DIFF)
+    scatter!(ax3, get_value.(df.eventDepth)[idperm], tmp.DIFF[idperm])
+    fff
+
+
+    df[tmp.DIFF.>4u"km", :] |> describe
+end
 
 # # Event clustering
 
@@ -222,7 +246,7 @@ cluster_center = combine(groupby(df, :clusterId), :pointENU => centerpoint => :c
 
 @assert get_units.(cluster_center.centerPoint) |> unique |> only == [u"km", u"km", u"km", u"hr12"]
 
-catalog_points = [get_values(p, [:x, :y, :z]) for p in catalog.pointENU]
+catalog_points = [get_values(p, [:x, :y, :z]) for p in catalogM4.pointENU]
 cluster_centers = [get_values(p, [:x, :y, :z]) for p in cluster_center.centerPoint]
 
 # Transpose for KDTree
@@ -255,9 +279,13 @@ problayout = :trial
 # dfg1 = groupdfs[6] # FIXME: why band that indicate probability low/high looks strange
 # FIXME: This cluster is huge. Can I mark non-target earthquakes as other colors?
 function eqkprb_plot(dfg1)
-    nontargetalpha = 0.25
-    nontargetcolor = :plum1# :slategray4 # :goldenrod4
-    nontargetstrokecolor = :purple1
+    # SETME
+    targetscatterargs = (marker=:star5, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red, markersize=15,)
+    nontargetscatterargs = (alpha=0.7, markersize=5,
+        color=:yellow,  # :transparent, # (:plum, 0.0), # :slategray4 # :goldenrod4
+        strokecolor=(:red, 1.0),
+        strokewidth=0.5)
+
 
     dfg = deepcopy(dfg1)
 
@@ -289,24 +317,24 @@ function eqkprb_plot(dfg1)
 
 
 
-    eqkplts = [data(g) * visual(Scatter) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)] # target event scattered at time-series plot grouped by :trail.
+    eqkplts = [data(g) * visual(Scatter; targetscatterargs...) * mapping(:evtx, :eventSize => get_value) for g in groupby(dfg, problayout)] # target event scattered at time-series plot grouped by :trail.
 
 
     nontargetidx = clusterid_to_nearby_event_index[only(unique(dfg.clusterId))]
-    tmpcatalog = transform(catalog, :eventTime => ByRow(get_value) => :evtx)[nontargetidx, :]
+    tmpcatalog = transform(catalogM4, :eventTime => ByRow(get_value) => :evtx)[nontargetidx, :]
     non_target_is_not_empty = !isempty(tmpcatalog)
 
     if non_target_is_not_empty
         @assert only(unique(get_unit.(dfg.eventTime))) == only(unique(get_unit.(tmpcatalog.eventTime)))
         tmpcls = [
-            ((xx0, xx1) = extrema(g.evtx);
+            ((xx0, xx1) = extrema(g.tx); # KEYNOTE: tx is the time stamps of probabilities, whereas evtx is the time stamps of events in the cluster.
             filter(row -> (row.evtx >= xx0 && row.evtx <= xx1), tmpcatalog))
             for (i, g) in enumerate(groupby(dfg, problayout))
         ]
 
         eqknontargetplts = [(
             (xx0, xx1) = extrema(g.evtx);
-            data(tmpcls[i]) * visual(Scatter; color=nontargetcolor, strokecolor=nontargetstrokecolor, alpha=nontargetalpha) * mapping(:evtx, :eventSize => get_value))
+            data(tmpcls[i]) * visual(Scatter; nontargetscatterargs...) * mapping(:evtx, :eventSize => get_value))
 
                             for (i, g) in enumerate(groupby(dfg, problayout))]
     end
@@ -316,7 +344,7 @@ function eqkprb_plot(dfg1)
     # linecolors = get(ColorSchemes.colorschemes[:grayC25], 0.2:0.05:0.8)# |> reverse
     # linecolors = :matter
     # in palettes: color=linecolors,
-    pprob = draw!(f[:, :], probplt, scales(Color=(; palette=WGLMakie.categorical_colors(:Set1_4, 4)),
+    pprob = draw!(f[:, :], probplt, scales(Color=(; palette=Project2024.noredDark2.colors),
         Layout=(; palette=[(i, 1) for i in 1:lenlayout]) # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
         # What is a palette: https://aog.makie.org/stable/gallery/gallery/scales/custom_scales/#custom_scales
     ))
@@ -380,10 +408,10 @@ function eqkprb_plot(dfg1)
         ylabel="Latitude")
     draw!(ga, twmap)
 
-    epi_plt = data(dfg) * visual(Scatter) * mapping(:eventLon => get_value, :eventLat => get_value)
+    epi_plt = data(dfg) * visual(Scatter; targetscatterargs...) * mapping(:eventLon => get_value, :eventLat => get_value)
     if non_target_is_not_empty
         tmpcombined = vcat(tmpcls...) |> unique
-        epi_plt2 = data(tmpcombined) * visual(Scatter; color=nontargetcolor, alpha=nontargetalpha) * mapping(:eventLon => get_value, :eventLat => get_value)
+        epi_plt2 = data(tmpcombined) * visual(Scatter; nontargetscatterargs...) * mapping(:eventLon => get_value, :eventLat => get_value)
         draw!(ga, epi_plt2)
     end
     # scatter!(ga, get_value.(dfg.eventLon), get_value.(dfg.eventLat))
@@ -410,14 +438,15 @@ end
 
 for dfg in groupdfs
     with_theme(size=(1000, 700),
-        Scatter=(marker=:star5, markersize=15, alpha=0.7, color=:yellow, strokewidth=0.2, strokecolor=:red),
+        Scatter=(;),
         Lines=(; alpha=1.0, linewidth=1.1), # Band=(; alpha=0.15) it is useless to assign it here.
+        Axis=(; backgroundcolor=:white)
     ) do
 
         f = eqkprb_plot(dfg)
         display(f)
         id = dfg.clusterId |> unique |> only
         (dt0, dt1) = DateTime.(extrema(dfg.eventTime)) .|> (d -> floor(d, Day)) .|> Date .|> string
-        Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
+        # Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
     end
 end
