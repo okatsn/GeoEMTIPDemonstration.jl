@@ -487,23 +487,40 @@ f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
 
     left = f5[1, 1]
+    right = f5[1, 2]
     plt5 = draw!(
         left,
         aog_layer,
         scales(Color=(; colormap=(:linear_worb_100_25_c53_n256), colorrange=(0, 100), highclip=:cyan)); #, colorrange=(0, 25)# https://aog.makie.org/stable/generated/penguins/#Smooth-density-plots
         axis=(f5sckwargs..., limits=(xylimits, xylimits),
-            xgridwidth=0.1,
-            ygridwidth=0.1)
+            xgridcolor=:black,
+            ygridcolor=:black,
+            xminorgridcolor=:black,
+            yminorgridcolor=:black,
+            xminorgridvisible=true,
+            yminorgridvisible=true,
+            xminorticks=IntervalsBetween(2),
+            yminorticks=IntervalsBetween(2),
+            xgridwidth=0.5,
+            ygridwidth=0.5,
+            xminorgridwidth=0.25,
+            yminorgridwidth=0.25,)
     )
-    AlgebraOfGraphics.legend!(f5[1, 2], plt5)
-    # Makie.save(target_file, f5)
-    colorbar!(f5[1, 2], plt5)
+
+    axs = filter(x -> x isa Axis, f5.content)
+    for ax1 in axs
+        plts = getproperty(Makie.get_scene(ax1), :plots)
+        [translate!(p, 0, 0, -100) for p in plts]
+    end # Move grid to the front (plot to behind): https://discourse.julialang.org/t/how-to-add-grid-lines-on-top-of-a-heatmap-in-makie/77578/2
+
+    colorbar!(right, plt5)
+
     display(f5)
     f5
+    # Makie.save(target_file, f5)
+
 end
 
-# CHECKPOINT: Move grid to the front
-# https://discourse.julialang.org/t/how-to-add-grid-lines-on-top-of-a-heatmap-in-makie/77578/2
 
 
 # KEYNOTE:
