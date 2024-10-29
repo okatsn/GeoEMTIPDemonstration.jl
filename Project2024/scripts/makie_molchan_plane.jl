@@ -519,7 +519,7 @@ f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     colorbar!(right, plt5)
 
     display(f5)
-    # Makie.save(target_file, f5)
+    Makie.save("MolchanDiagram.png", f5)
 end
 
 
