@@ -244,43 +244,74 @@ end
 dfcb2a = @chain dfcb2 begin # separated since it is super slow
     transform(Cols(r"NEQ") .=> ByRow(BigInt); renamecols=false)
     transform(
-        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_low,
-        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_high
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_low_68,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_high_68,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_low_95,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_high_95,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.10, n), init=-Inf)) => :DCB_low_90,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.10, n), init=-Inf)) => :DCB_high_90,
     )
-    select(:prp, :trial, :DCB_low, :DCB_high)
+    select(:prp, :trial, Cols(r"DCB\_"))
 end
 
-dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
+dfcb2b = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
 
 # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
 
 
-dropnanmissing!(dfcb2)
+dropnanmissing!(dfcb2b)
 
 
 f2 = Figure(; size=(800, 550))
-let dfcb = dfcb2
+
+
+let dfcb = dfcb2b
+
+    dccolors1 = (clow=:springgreen1, chigh=:springgreen3)
+    dccolors2 = (clow=:yellow2, chigh=:goldenrod1)
+
+
+
+
     x = :prp => repus => xlabel2
+    function dclevels(c; low=:DCB_low_95, high=:DCB_high_95)
+        cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+        clevel = getproperty.(match.(Ref(r"\d+"), string.([high, low])), :match) |> unique |> only
+
+        return (
+            clevel=cusvis(c.clow) * mapping(x, low) +
+                   cusvis(c.chigh) * mapping(x, high),
+            description="$clevel% Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+            legend=[
+                LineElement(color=c.clow, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
+                LineElement(color=c.chigh, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
+                MarkerElement(color=[c.clow, c.chigh], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])
+            ]
+        )
+    end
     dcbars = (
         visual(BarPlot; color=:royalblue4) *
         mapping(x, :DC_summary => ylabel2)
     )
 
-    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
-    dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
+    dclevels1 = dclevels(dccolors1;
+        low=:DCB_low_68,
+        high=:DCB_high_68)
+    dclevels2 = dclevels(dccolors2;
+        low=:DCB_low_95,
+        high=:DCB_high_95)
 
     errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
               visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
 
-    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels1.clevel + dclevels2.clevel) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
     Legend(f2[2, :],
         [
-            [
-                LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
-                LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
-                MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])],
+            dclevels1.legend,
+            dclevels2.legend,
             [
                 PolyElement(color=:royalblue4, strokecolor=:black, strokewidth=0.5,
                     points=Point2f[(0, 0.8), (1, 0.8), (1, 0), (0, 0)]),
@@ -288,7 +319,9 @@ let dfcb = dfcb2
                 MarkerElement(color=:cadetblue3, markersize=6, marker=:circle, points=Point2f[(0.5, 0.8)])
             ]
         ],
-        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+        [
+            dclevels1.description,
+            dclevels2.description,
             "Fitting degree with error concerning minimum/maximum number of target EQKs"], ;
         labelsize=15,
         valign=:bottom, tellheight=true
