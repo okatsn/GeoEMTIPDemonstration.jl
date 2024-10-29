@@ -473,7 +473,10 @@ display(f5s)
 # - `hexbin` won't work.
 # - `visual(Makie.Hist)` will fail (No aesthetic mapping defined yet) even multiplied by `density`, `frequency`.
 # - `filled_contours * density()` don't work
-visual_histogram2d = histogram(normalization=:pdf, bins=30) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
+
+
+visual_histogram2d = histogram(bins=30) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
+# - No normalization because every subplot should have exactly the same total counts (500 permutations * 12 phases).
 
 f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     f51res = (size=(600, 700),)
@@ -483,10 +486,11 @@ f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     # # KEYNOTE: `set_aog_color_palette!` should be deprecated since color aesthetic won't be "pulled in via the theme" after AoG v0.7.
     # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
 
+    left = f5[1, 1]
     plt5 = draw!(
-        f5[1, 1],
+        left,
         aog_layer,
-        scales(Color=(; colormap=(:linear_wcmr_100_45_c42_n256), colorrange=(0, 5))); # https://aog.makie.org/stable/generated/penguins/#Smooth-density-plots
+        scales(Color=(; colormap=(:linear_worb_100_25_c53_n256), colorrange=(0, 100), highclip=:cyan)); #, colorrange=(0, 25)# https://aog.makie.org/stable/generated/penguins/#Smooth-density-plots
         axis=(f5sckwargs..., limits=(xylimits, xylimits),
             xgridwidth=0.1,
             ygridwidth=0.1)
