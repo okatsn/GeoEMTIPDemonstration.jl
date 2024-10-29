@@ -263,22 +263,7 @@ dropnanmissing!(dfcb2)
 
 f2 = Figure(; size=(800, 550))
 
-function dclevels(c; low=:DCB_low_95, high=:DCB_high_95)
-    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
-    clevel = getproperty.(match.(Ref(r"\d+"), string.([high, low])), :match) |> unique |> only
-
-    return (
-        clevel=cusvis(c.clow) * mapping(x, low) +
-               cusvis(c.chigh) * mapping(x, high),
-        description="$clevel% Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
-        legend=[
-            LineElement(color=c.clow, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
-            LineElement(color=c.chigh, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
-            MarkerElement(color=[c.clow, c.chigh], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])
-        ]
-    )
-end
 let dfcb = dfcb2
 
     dccolors1 = (clow=:gray95, chigh=:gray81)
@@ -287,6 +272,22 @@ let dfcb = dfcb2
 
 
     x = :prp => repus => xlabel2
+    function dclevels(c; low=:DCB_low_95, high=:DCB_high_95)
+        cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+        clevel = getproperty.(match.(Ref(r"\d+"), string.([high, low])), :match) |> unique |> only
+
+        return (
+            clevel=cusvis(c.clow) * mapping(x, low) +
+                   cusvis(c.chigh) * mapping(x, high),
+            description="$clevel% Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+            legend=[
+                LineElement(color=c.clow, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
+                LineElement(color=c.chigh, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
+                MarkerElement(color=[c.clow, c.chigh], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])
+            ]
+        )
+    end
     dcbars = (
         visual(BarPlot; color=:royalblue4) *
         mapping(x, :DC_summary => ylabel2)
