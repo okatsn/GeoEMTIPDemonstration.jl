@@ -244,10 +244,12 @@ end
 dfcb2a = @chain dfcb2 begin # separated since it is super slow
     transform(Cols(r"NEQ") .=> ByRow(BigInt); renamecols=false)
     transform(
-        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_low,
-        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_high
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_low_68,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_high_68,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_low_95,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_high_95,
     )
-    select(:prp, :trial, :DCB_low, :DCB_high)
+    select(:prp, :trial, Cols(r"DCB\_"))
 end
 
 dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
@@ -260,6 +262,15 @@ dropnanmissing!(dfcb2)
 
 
 f2 = Figure(; size=(800, 550))
+
+function dclevels(c; low=:DCB_low_95, high=:DCB_high_95)
+    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+    clevel = getproperty.(match.(Ref(r"\d+"), string.([high, low])), :match) |> unique |> only
+    strlegend = "$clevel% Confidence boundary of fitting degree for minimum/maximum number of target EQKs"
+
+    return (plot=cusvis(c.clow) * mapping(x, low) + cusvis(c.chigh) * mapping(x, high), description=strlegend)
+end
 let dfcb = dfcb2
     x = :prp => repus => xlabel2
     dcbars = (
@@ -267,7 +278,6 @@ let dfcb = dfcb2
         mapping(x, :DC_summary => ylabel2)
     )
 
-    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
     dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
 
