@@ -466,14 +466,17 @@ f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "Molchan
 display(f5c)
 display(f5s)
 
-# visual(Hist) # Makie.Hist will fail (No aesthetic mapping defined yet) even multiplied by `density`, `frequency`.
-visual_histogram2d = histogram(bins=30) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
-# AlgebraOfGraphics just needs method definitions for `aesthetic_mapping`,
+
+# # AlgebraOfGraphics just needs method definitions for `aesthetic_mapping`,
 # this is why:
 # - `visual(Heatmap)` without `AlgebraOfGraphics.density()` won't work (heatmap takes x, y, and z_color)
 # - `hexbin` won't work.
+# - `visual(Makie.Hist)` will fail (No aesthetic mapping defined yet) even multiplied by `density`, `frequency`.
+# - `filled_contours * density()` don't work
+visual_histogram2d = histogram(normalization=:pdf, bins=30) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
+
 f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
-    f51res = (size=(800, 700),)
+    f51res = (size=(600, 700),)
     f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
     f5 = Figure(; f51res...)
 
@@ -490,6 +493,7 @@ f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
     )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
     # Makie.save(target_file, f5)
+    colorbar!(f5[1, 2], plt5)
     display(f5)
     f5
 end
