@@ -301,8 +301,8 @@ let dfcb = dfcb2b
         low=:DCB_low_68,
         high=:DCB_high_68)
     dclevels2 = dclevels(dccolors2;
-        low=:DCB_low_90,
-        high=:DCB_high_90)
+        low=:DCB_low_95,
+        high=:DCB_high_95)
 
     errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
               visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
