@@ -57,6 +57,8 @@ end
 
 TTP23a = TrainTestPartition23a(unique(df.frc), 3)
 (ax0N, f0Nyr) = figureplot(TTP23a; size=(700, 400))
+display(f0Nyr)
+Makie.save("train_test_partition.png", f0Nyr)
 
 
 # NEQ summary table

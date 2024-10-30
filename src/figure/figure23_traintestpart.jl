@@ -17,6 +17,7 @@ function figureplot(TTP23a::TrainTestPartition23a; size=(700, 300))
     tb = twohstackedboxes!(ax0N, THBsNyr)
     setyticks!(ax0N, THBsNyr)
     datetimeticks!(ax0N, THBsNyr, Month(6))
+    # datetimeticks!(ax0N, THBsNyr, LetTicksAsIs())
     ax0N.xticklabelrotation = 0.2π
     Label(f0Nyr[:, 0], "Forecasting Phase", rotation=0.5π, tellheight=false)
     Legend(f0Nyr[end+1, :],
