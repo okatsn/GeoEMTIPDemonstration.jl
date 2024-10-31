@@ -167,7 +167,7 @@ Makie.save("Catalog_M5_map.png", f)
 
 
 # # KEYNOTE: We show only cases after 2022 (it is too much to show all)
-filter!(row -> row.dt > DateTime(2022, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
+filter!(row -> row.dt > DateTime(2019, 1, 1), df) # FIXME: Revise this to be not dependent on hard coded Date Time.
 
 
 
@@ -447,6 +447,6 @@ for dfg in groupdfs
         display(f)
         id = dfg.clusterId |> unique |> only
         (dt0, dt1) = DateTime.(extrema(dfg.eventTime)) .|> (d -> floor(d, Day)) .|> Date .|> string
-        # Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
+        Makie.save(targetdir("Eventid[$id]From[$dt0]To[$dt1].png"), f)
     end
 end
