@@ -347,7 +347,7 @@ function eqkprb_plot(dfg1)
     pprob = draw!(f[:, :], probplt, scales(Color=(; palette=Project2024.noredDark2.colors),
             Layout=(; palette=[(i, 1) for i in 1:lenlayout]) # specific layout order. See https://aog.makie.org/stable/gallery/gallery/layout/faceting/#Facet-wrap-with-specified-layout-for-rows-and-cols
             # What is a palette: https://aog.makie.org/stable/gallery/gallery/scales/custom_scales/#custom_scales
-        ); axis=(; limits=(nothing, (0.0, 1.0))))
+        ); axis=(; limits=(nothing, (-0.001, 1.001))))
 
     Label(f[:, 0], "probability around epicenters", tellheight=false, rotation=0.5π)
     legend!(f[end+1, :], pprob; tellwidth=false, tellheight=true, titleposition=:left, orientation=:horizontal)
