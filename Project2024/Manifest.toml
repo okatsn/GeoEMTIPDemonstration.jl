@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.4"
+julia_version = "1.10.5"
 manifest_format = "2.0"
 project_hash = "c2b60485a9ff68ae0ad5f9756e0ba7d0e8bf7869"
 
@@ -1301,9 +1301,9 @@ version = "0.5.0"
 
 [[deps.OkMakieToolkits]]
 deps = ["Chain", "Colors", "DataFrames", "Dates", "GeometryBasics", "LinearAlgebra", "Makie", "PlotUtils", "ShiftedArrays", "Statistics"]
-path = "/home/jovyan/.julia/dev/OkMakieToolkits"
+git-tree-sha1 = "84aa76f0e71b75eec8f674f45670763f1d472164"
 uuid = "4e74b330-6242-4c7a-bc50-5dcf56e2fdec"
-version = "0.10.4"
+version = "0.10.5"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
@@ -2067,7 +2067,7 @@ version = "0.15.2+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
