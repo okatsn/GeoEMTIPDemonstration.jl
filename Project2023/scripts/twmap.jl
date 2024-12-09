@@ -32,8 +32,8 @@ draw!(ga, twmap)
 
 scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
 
-transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
+transform!(station_location, :code => ByRow(TWGEMSDatasets.station_location_text_shift) => :TextAlign)
 
 text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
-    align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=12)
+    align=station_location.TextAlign, offset=TWGEMSDatasets.textoffset.(station_location.TextAlign, 4), fontsize=12)
 f

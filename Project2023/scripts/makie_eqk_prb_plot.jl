@@ -39,7 +39,7 @@ df_gm = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_G
 df_mix = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTestEQK_MIX_3yr_180d_500md_2023A10_compat_1")
 
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
-transform!(station_location, :code => ByRow(station_location_text_shift) => :TextAlign)
+transform!(station_location, :code => ByRow(TWGEMSDatasets.station_location_text_shift) => :TextAlign)
 
 catalog = CWBProjectSummaryDatasets.dataset("EventMag5", "Catalog")
 twshp = Shapefile.Table(dir_map("COUNTY_MOI_1070516.shp"))
@@ -118,7 +118,7 @@ f = with_theme(resolution=(600, 700)) do
 
     scatter!(eqkmap, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:black, 0.9), markersize=11)
     text!(eqkmap, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 3), fontsize=11)
+        align=station_location.TextAlign, offset=TWGEMSDatasets.textoffset.(station_location.TextAlign, 3), fontsize=11)
 
     MLrefs = catalog.ML |> extrema .|> round |> collect |> v -> (range(v..., step=0.5)) |> collect
     MLrefx = fill(118.2, length(MLrefs))
@@ -305,7 +305,7 @@ function eqkprb_plot(dfg1)
 
     scatter!(ga, station_location.Lon, station_location.Lat; marker=:utriangle, color=(:blue, 1.0))
     text!(ga, station_location.Lon, station_location.Lat; text=station_location.code,
-        align=station_location.TextAlign, offset=textoffset.(station_location.TextAlign, 4), fontsize=15)
+        align=station_location.TextAlign, offset=TWGEMSDatasets.textoffset.(station_location.TextAlign, 4), fontsize=15)
 
     colsize!(f.layout, 1, Relative(0.6))
     colgap!(f.layout, 1, Relative(0.02))

@@ -14,6 +14,8 @@ using OkDataFrameTools
 using MolchanCB
 using Dates
 using Project2024
+using TWGEMSDatasets
+TWGEMSDatasets.datasets()
 CWBProjectSummaryDatasets.datasets()
 
 (df23, df24a, df24) = Project2024.load_all_trials(PhaseTest())

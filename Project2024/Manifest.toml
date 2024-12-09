@@ -2,7 +2,7 @@
 
 julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "c2b60485a9ff68ae0ad5f9756e0ba7d0e8bf7869"
+project_hash = "ebb8e06ad5fa8ef7518e6b4a6498a4c2ecf55dc1"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -182,7 +182,7 @@ version = "0.10.15"
 
 [[deps.CWBProjectSummaryDatasets]]
 deps = ["SmallDatasetMaker", "Test"]
-git-tree-sha1 = "90d6f44668a5f3383028556efd24a57bd9648da2"
+path = "/home/jovyan/.julia/dev/CWBProjectSummaryDatasets"
 uuid = "b38d3104-45cc-42ed-bfee-2aefedd5b40b"
 version = "0.7.3"
 
@@ -613,7 +613,7 @@ uuid = "92fee26a-97fe-5a0c-ad85-20a5f3185b63"
 version = "0.6.2"
 
 [[deps.GeoEMTIPDemonstration]]
-deps = ["AlgebraOfGraphics", "CairoMakie", "DataFrames", "Dates", "MolchanCB", "OkDataFrameTools", "OkMakieToolkits", "Statistics"]
+deps = ["AlgebraOfGraphics", "CairoMakie", "DataFrames", "Dates", "MolchanCB", "OkDataFrameTools", "OkMakieToolkits", "Statistics", "TWGEMSDatasets"]
 path = ".."
 uuid = "ebde9838-6584-4548-b79e-429a239baf90"
 version = "0.1.0"
@@ -1862,6 +1862,12 @@ version = "7.2.1+1"
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
+
+[[deps.TWGEMSDatasets]]
+deps = ["SmallDatasetMaker"]
+path = "/home/jovyan/.julia/dev/TWGEMSDatasets"
+uuid = "e02d82d9-7e7e-46f3-9a6c-b9afd88f5ac7"
+version = "0.1.4"
 
 [[deps.TableTraits]]
 deps = ["IteratorInterfaceExtensions"]
