@@ -10,7 +10,7 @@
 This is a julia package created using `okatsn`'s preference, and this package is registered to [okatsn/OkRegistry](https://github.com/okatsn/OkRegistry).
 
 
-## Notice
+## Notice: add `GeoEMTIPDemonstration`
 
 Now `GeoEMTIPDemonstration` is a dependency only for the local projects in this repository.
 It is currently not a versioned package, and any project outside this repository should not depend on `GeoEMTIPDemonstration`.
@@ -21,3 +21,7 @@ At workspace (/home/jovyan/workspace where the .git for `GeoEMTIPDemonstration` 
 ```
 (Project2024) pkg> add .
 ```
+
+## Notice: add a dependency of a private package
+
+Noted that for a private dependency, such as `CWBProjectSummaryDatasets`, please clone it to `~/.julia/dev` first, and then `dev` it.
