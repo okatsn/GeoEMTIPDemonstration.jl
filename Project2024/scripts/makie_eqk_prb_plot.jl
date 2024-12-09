@@ -46,7 +46,7 @@ mkpath(targetdir())
 # From example: https://geo.makie.org/stable/examples/#Italy's-states
 
 # SETME
-station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
+station_location = TWGEMSDatasets.dataset("StationInfo", "location")
 transform!(station_location, :code => ByRow(TWGEMSDatasets.station_location_text_shift) => :TextAlign)
 
 # # Load all joint-station data here:
