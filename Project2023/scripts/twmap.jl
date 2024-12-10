@@ -9,7 +9,7 @@ using Shapefile
 using EventSpaceAlgebra
 
 station_location = CWBProjectSummaryDatasets.dataset("GeoEMStation", "StationInfo")
-twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
+twshp = Shapefile.Table("data/map/COUNTY_MOI.shp")
 twmap = data(twshp) * mapping(:geometry) * visual(
             Choropleth,
             color=:white, # "white" is required to make background clean

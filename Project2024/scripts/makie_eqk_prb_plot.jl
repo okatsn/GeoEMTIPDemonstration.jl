@@ -84,7 +84,7 @@ select_from_train(r) = x -> (x >= (first(r) - train_yr) && x <= last(r))
 
 # # Map data
 
-twshp = Shapefile.Table("data/map/COUNTY_MOI_1070516.shp")
+twshp = Shapefile.Table("data/map/COUNTY_MOI.shp")
 
 twmap = data(twshp) * mapping(:geometry) * visual(
             Choropleth,
