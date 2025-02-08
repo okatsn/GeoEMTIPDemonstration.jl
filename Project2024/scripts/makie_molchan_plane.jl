@@ -1,4 +1,5 @@
 # https://juliadatascience.io/recipe_df
+using GeoEMTIPDemonstration
 using Chain
 using DataFrames, CSV
 using CairoMakie, AlgebraOfGraphics
@@ -10,19 +11,56 @@ import NaNMath: mean as nanmean
 using CWBProjectSummaryDatasets
 using OkMakieToolkits
 using OkDataFrameTools
-using CWBProjectSummaryDatasets
-using GeoEMTIPDemonstration
 using MolchanCB
 using Dates
+using Project2024
+using TWGEMSDatasets
+TWGEMSDatasets.datasets()
+CWBProjectSummaryDatasets.datasets()
 
-df_mx3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_MIX_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "mix", :train_yr => 3)
-df_ge3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GE_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GE", :train_yr => 3)
-df_gm3 = CWBProjectSummaryDatasets.dataset("SummaryJointStation", "PhaseTest_GM_3yr_180d_500md_2023A10") |> df -> insertcols!(df, :trial => "GM", :train_yr => 3)
+(df23, df24a, df24) = Project2024.load_all_trials(PhaseTest())
 
-df = vcat(
-    df_mx3, df_ge3, df_gm3)
-# `dropnanmissing!` is required to avoid contour plot error
-# TODO: consider deprecate `dropnanmissing!` in `figureplot`
+
+# # Keep only data where frc and prp labels matching the other dataset
+# (otherwise, the comparison has no meaning)
+
+function filter_intersect(nt)
+    in(nt.prp, intersect(Set(df23.prp), Set(df24.prp))) &&
+        in(nt.frc, intersect(Set(df23.frc), Set(df24.frc)))
+end
+
+filter!(AsTable(:) => filter_intersect, df23)
+filter!(AsTable(:) => filter_intersect, df24)
+filter!(AsTable(:) => filter_intersect, df24a)
+
+
+# # Combine the two table
+
+# Pre-process for consistency in columns of two datasets.
+
+# df23 is of older format thus missing in some columns.
+# missingcols = setdiff(Set(names(df24)), Set(names(df23)))
+# for c in missingcols
+#     insertcols!(df23, c => missing)
+# end
+select!(df24, names(df23))
+select!(df24a, names(df23))
+# KEYNOTE: Because later in the script `dropmissing!` is used a couple of times, which results in entirely remove the 2023 data if those unavailable columns are added and filled with missing values, I do discard columns of 2024 data that was not available in 2023 data instead.
+
+
+
+# combine df23 and df24
+df = DataFrame()
+for dfi in [df23, df24, df24a]
+    append!(df, dfi; promote=true)
+end
+
+# # Train-Test time span plot
+
+TTP23a = TrainTestPartition23a(unique(df.frc), 3)
+(ax0N, f0Nyr) = figureplot(TTP23a; size=(700, 400))
+display(f0Nyr)
+Makie.save("train_test_partition.png", f0Nyr)
 
 
 # NEQ summary table
@@ -34,29 +72,14 @@ dfneq = @chain df begin
     unstack(:frc, :trial, :NEQ_range)
 end
 
+
+
+# #
+
 # SETME: Parameter settings:
 whichalpha = 0.32
 
-# # A dictionary function for efficiently obtain Molchan confidence boundary.
-# `molchancb(N, alpha)` for N > 20 is slow (julia is slow in handling BigInt).
-# As a result, it is necessary to build a dictionary function for all possible NEQ to avoid
-# repeated calculation.
-uniqNEQ = df[!, r"NEQ"] |> Matrix |> vec |> unique
-
-DCB = Dict([α => Dict([neq => molchancb(big(neq), α) for neq in uniqNEQ]) for α in [0.05, 0.1, 0.32]])
-
-getalms(α, neq) = DCB[α][neq]
-
 uniqueonly(x) = x |> unique |> only
-
-function getdcb(α, neq)
-    (alarmed, missed) = try
-        (alarmed, missed) = getalms(α, neq) # fitting degree
-    catch
-        (alarmed, missed) = molchancb(neq, α)
-    end
-    fdcb = 1.0 .- alarmed .- missed
-end
 
 fdperc = "$(Int(round((1-whichalpha) * 100)))%"
 
@@ -80,13 +103,13 @@ P = prep202304!(df)
 transform!(P.table, [:frc, :frc_ind] => ByRow((x, y) -> @sprintf("(%.2d) %s", y, x)) => :frc_ind_frc)
 # Colors:
 
-CF23 = ColorsFigure23(P)
+CF23 = ColorsFigure23(P; prpcolor=Project2024.noredDark2.colors)
 @assert isequal(P.table, df)
 
 # Scales
 # # This is new after AoG v0.7. Please refer https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
 scales_prp = scales(Color=(; palette=CF23.prp.colormap, categories=CF23.prp.colortag))
-scales_trial = scales(Color=(; palette=CF23.trial.colormap, categories=CF23.trial.colortag))
+
 scales_frc = scales(;
     bar_rainbowcolor=(
         Color = (palette=CF23.frc.colormap, categories=CF23.frc.colortag)
@@ -118,6 +141,15 @@ end # Add left, top and bottom super labels.
 
 # # Fitting Degree
 # combined DataFrame for plot
+# KEYNOTE: About fitting degree of the training phase:
+# - Previously, the fitting of training phase is conducted via plotEQK1.m
+#   - You can only calculate the fitting of the models of same "rank". E.g., best model (rank 1) of every station.
+#   - Noted that the results is very different from joint-station fitting degree, even if you "add them all".
+# - The 500 sets of indices of permutation in the jointstation step has not (and never) been saved.
+# - So far there is no way to derive the true fitting degree of the
+#   "training phase "of the 500 sets of jointstation parameters that
+#   are used for forecasting, because those necessary detailed variables have
+#   never been saved.
 dfcb = combine(groupby(df, [:frc_ind, :frc, :prp, :trial]), :FittingDegree => nanmean => :FittingDegreeMOM, :DCB_low => uniqueonly, :DCB_high => uniqueonly, nrow; renamecols=false)
 dropnanmissing!(dfcb)
 
@@ -180,17 +212,22 @@ calcfd(τ, τ₀, μ, μ₀) = 1 - τ / τ₀ - μ / μ₀
 
 dfcb2 = @chain df begin
     # Calculate total number of earthquakes and alarmed area
-    # !!! note
-    #     To calculate overall fitting degree, sum over the number of EQK and area of TIP is required.
-    #     However, MagTIP-2022's `jointstation` did not yet return nEQK (number of target earthquakes)
-    #     and areaTIP (spatial TIP area) for each model (out of total 500 permutations).
-    #     I have no choice but use `NEQ_min`/`_max` (from MagTIP-2022's `jointstation_summary` with
-    #     'CalculateNEQK' option) to "restore" the number of hitted/missed earthquakes using
-    #     MissingRateForecasting and `NEQ_min`/`_max` (minimum/maximum possible number of target earthquakes).
+    # KEYNOTE:
+    # - To calculate overall fitting degree, sum over the number of EQK and area of TIP is required.
+    #   However, MagTIP-2022's `jointstation` did not yet return nEQK (number of target earthquakes)
+    #   and areaTIP (spatial TIP area) for each model (out of total 500 permutations).
+    #   I have no choice but use `NEQ_min`/`_max` (from MagTIP-2022's `jointstation_summary` with
+    #   'CalculateNEQK' option) to "restore" the number of hitted/missed earthquakes using
+    #   MissingRateForecasting and `NEQ_min`/`_max` (minimum/maximum possible number of target earthquakes).
+    # - Because the true `total_area` of each forecasting phase could vary a little, thus
+    #   the column is renamed as `pseudoTotal_area` to avoid misleading.
+    # - Thus, the `DC_summary` is calculated based on averaged alarmed rate, rather than
+    #   alarmed rate subdivided by total area (which is in fact unknown/not saved).
+    #
     transform([:MissingRateForecasting, :NEQ_min] => ByRow((m, n) -> n * m) => :missed_min)
     transform([:MissingRateForecasting, :NEQ_max] => ByRow((m, n) -> n * m) => :missed_max)
     transform([:AlarmedRateForecasting, :frc] => ByRow((τ, t) -> τ * dtstr2nday(t)) => :alarmed_area)
-    transform(:frc => ByRow(dtstr2nday) => :total_area)
+    transform(:frc => ByRow(dtstr2nday) => :pseudoTotal_area)
     groupby([:frc, :prp, :trial])
     combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> mean; renamecols=false)
     # NEQ must be integer, since in each frc, prp and trial, NEQ should be identical.
@@ -198,8 +235,8 @@ dfcb2 = @chain df begin
     #
     groupby([:prp, :trial])
     combine(Cols(r"NEQ", r"missed\_", r"\_area") .=> sum, ; renamecols=false)
-    transform([:alarmed_area, :total_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
-    transform([:alarmed_area, :total_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
+    transform([:alarmed_area, :pseudoTotal_area, :missed_min, :NEQ_min] => ByRow(calcfd) => :DC_summary_min)
+    transform([:alarmed_area, :pseudoTotal_area, :missed_max, :NEQ_max] => ByRow(calcfd) => :DC_summary_max)
     # !!! warning
     #     It should be noticed that here I assume spatial TIP area is identical accross frc.
     transform(AsTable(Cols(r"DC\_summary\_m")) => ByRow(mean) => :DC_summary)
@@ -211,43 +248,74 @@ end
 dfcb2a = @chain dfcb2 begin # separated since it is super slow
     transform(Cols(r"NEQ") .=> ByRow(BigInt); renamecols=false)
     transform(
-        :NEQ_max => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_low,
-        :NEQ_min => ByRow(n -> maximum(getdcb(whichalpha, n), init=-Inf)) => :DCB_high
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_low_68,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.32, n), init=-Inf)) => :DCB_high_68,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_low_95,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.05, n), init=-Inf)) => :DCB_high_95,
+        :NEQ_max => ByRow(n -> maximum(getdcb(0.10, n), init=-Inf)) => :DCB_low_90,
+        :NEQ_min => ByRow(n -> maximum(getdcb(0.10, n), init=-Inf)) => :DCB_high_90,
     )
-    select(:prp, :trial, :DCB_low, :DCB_high)
+    select(:prp, :trial, Cols(r"DCB\_"))
 end
 
-dfcb2 = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
+dfcb2b = outerjoin(dfcb2, dfcb2a; on=[:prp, :trial])
 
 # TODO: modify matlab code to export TIPTrueArea, TIPAllArea, EQKMissingNumber and EQKAllNumber for calculating overall fitting degree with 1 - sum(TIMTrueArea)/sum(TIPAllArea) - sum(EQKMissingNumber/EQKAllNumber) ???
 
 
 
-dropnanmissing!(dfcb2)
+dropnanmissing!(dfcb2b)
 
 
 f2 = Figure(; size=(800, 550))
-let dfcb = dfcb2
+
+
+let dfcb = dfcb2b
+
+    dccolors1 = (clow=:springgreen1, chigh=:springgreen3)
+    dccolors2 = (clow=:yellow2, chigh=:goldenrod1)
+
+
+
+
     x = :prp => repus => xlabel2
+    function dclevels(c; low=:DCB_low_95, high=:DCB_high_95)
+        cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
+
+        clevel = getproperty.(match.(Ref(r"\d+"), string.([high, low])), :match) |> unique |> only
+
+        return (
+            clevel=cusvis(c.clow) * mapping(x, low) +
+                   cusvis(c.chigh) * mapping(x, high),
+            description="$clevel% Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+            legend=[
+                LineElement(color=c.clow, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
+                LineElement(color=c.chigh, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
+                MarkerElement(color=[c.clow, c.chigh], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])
+            ]
+        )
+    end
     dcbars = (
         visual(BarPlot; color=:royalblue4) *
         mapping(x, :DC_summary => ylabel2)
     )
 
-    cusvis(namedcolor) = visual(ScatterLines; color=namedcolor, linewidth=1.5, markersize=10)
 
-    dclevels = cusvis(:springgreen1) * mapping(x, :DCB_low) + cusvis(:springgreen3) * mapping(x, :DCB_high)
+    dclevels1 = dclevels(dccolors1;
+        low=:DCB_low_68,
+        high=:DCB_high_68)
+    dclevels2 = dclevels(dccolors2;
+        low=:DCB_low_95,
+        high=:DCB_high_95)
 
     errbars = visual(Errorbars; whiskerwidth=10, color=:cadetblue3) * mapping(x, :DC_summary, :DC_error_low, :DC_error_high) +
               visual(Scatter; color=:cadetblue3) * mapping(x, :DC_summary)
 
-    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
+    draw!(f2, data(dfcb) * (dcbars + errbars + dclevels1.clevel + dclevels2.clevel) * mapping(col=:trial); axis=(xticklabelrotation=0.2π,))
     Legend(f2[2, :],
         [
-            [
-                LineElement(color=:springgreen1, linestyle=nothing, points=Point2f[(0, 0.2), (1, 0.2)]),
-                LineElement(color=:springgreen3, linestyle=nothing, points=Point2f[(0, 0.8), (1, 0.8)]),
-                MarkerElement(color=[:springgreen1, :springgreen3], markersize=12, marker=:circle, points=Point2f[(0.5, 0.2), (0.5, 0.8)])],
+            dclevels1.legend,
+            dclevels2.legend,
             [
                 PolyElement(color=:royalblue4, strokecolor=:black, strokewidth=0.5,
                     points=Point2f[(0, 0.8), (1, 0.8), (1, 0), (0, 0)]),
@@ -255,7 +323,9 @@ let dfcb = dfcb2
                 MarkerElement(color=:cadetblue3, markersize=6, marker=:circle, points=Point2f[(0.5, 0.8)])
             ]
         ],
-        ["$fdperc Confidence boundary of fitting degree for minimum/maximum number of target EQKs",
+        [
+            dclevels1.description,
+            dclevels2.description,
             "Fitting degree with error concerning minimum/maximum number of target EQKs"], ;
         labelsize=15,
         valign=:bottom, tellheight=true
@@ -372,7 +442,6 @@ function fig5_molchan_by_prp(aog_layer::AlgebraOfGraphics.AbstractAlgebraic, tar
     plt5 = draw!(
         f5[1, 1],
         aog_layer,
-        scales_trial;
         axis=(f5sckwargs..., limits=(xylimits, xylimits))
     )
     AlgebraOfGraphics.legend!(f5[1, 2], plt5)
@@ -392,9 +461,8 @@ xymap = mapping(
 visual_contour = AlgebraOfGraphics.density() * visual(Contour, levels=7, linewidth=1, alpha=0.8, labels=false)
 visual_scatter = visual(Scatter, markersize=5, alpha=0.3) * mapping(marker=:trial)
 
-
-molchan_all_frc = data(P.table) * xymap * mapping(color=:trial) *
-                  mapping(layout=:prp => "filter")
+molchan_all_frc = data(P.table) * xymap * mapping(col=:trial) *
+                  mapping(row=:prp => "filter")
 
 f5c = fig5_molchan_by_prp(molchan_all_frc * (visual_contour + visual_scatter) + randguess, "MolchanDiagram_Contour_color=trial_layout=prp.png")
 f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "MolchanDiagram_Scatter_color=trial_layout=prp.png")
@@ -402,38 +470,66 @@ f5s = fig5_molchan_by_prp(molchan_all_frc * visual_scatter + randguess, "Molchan
 display(f5c)
 display(f5s)
 
-f5res = (size=(800, 700),)
-f5abkwargs = (titlesize=11, aspect=1, xticklabelrotation=0.2π)
 
-densitykwargs = (bandwidth=0.01, boundary=(-0.1, 1.1)) # KEYNOTE: `visual(Density)` failed using AoG v0.8.0 and Makie v0.21.6 at the step of generate legend ("ERROR: MethodError: no method matching legend_elements(::Type{Plot{…}}, ::Dictionaries.Dictionary{Symbol, Any}, ::Dictionaries.Dictionary{Union{…}, Any})")
-
-ratedensity = data(P.table) * AlgebraOfGraphics.density() * mapping(color=:trial) * mapping(layout=:frc_ind_frc)
-f5a = draw(ratedensity * mapping(:AlarmedRateForecasting),
-    scales_trial;
-    axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="alarmed rate", ylabel="pdf"), figure=f5res)
-Makie.save("MolchanDiagram_AlarmedRate_color=trial_layout=frc.png", f5a)
-
-# AlgebraOfGraphics.legend!(f5[1,2], plt5a) # KEYNOTE: auto legend failed again
-
-f5b = draw(ratedensity * mapping(:MissingRateForecasting), scales_trial; axis=(f5abkwargs..., limits=(xylimits, (nothing, nothing)), xlabel="missing rate", ylabel="pdf"), figure=f5res)
-Makie.save("MolchanDiagram_MissingRate_color=trial_layout=frc.png", f5b)
+# # AlgebraOfGraphics just needs method definitions for `aesthetic_mapping`,
+# this is why:
+# - `visual(Heatmap)` without `AlgebraOfGraphics.density()` won't work (heatmap takes x, y, and z_color)
+# - `hexbin` won't work.
+# - `visual(Makie.Hist)` will fail (No aesthetic mapping defined yet) even multiplied by `density`, `frequency`.
+# - `filled_contours * density()` don't work
 
 
-display(f5a)
-display(f5b)
+visual_histogram2d = histogram(
+    bins=range(0, 1.0001, # KEYNOTE: Ensure the uppermost edges includes points at 1.0. Without doing so (assigning a slightly larger number 1.0001 rather than 1.0), those at 1.0 won't be counted.
+        length=20)
+) # 2-D AlgebraOfGraphics.histogram looks like rectangle scatters, because there is no smoothing. How to use: https://aog.makie.org/stable/generated/analyses/#Histogram
+# - No normalization because every subplot should have exactly the same total counts (500 permutations * 12 phases).
+
+f5h = let aog_layer = molchan_all_frc * (visual_histogram2d) + randguess
+    f51res = (size=(600, 700),)
+    f5sckwargs = (titlesize=13, aspect=1, xticklabelrotation=0.2π)
+    f5 = Figure(; f51res...)
+
+    # # KEYNOTE: `set_aog_color_palette!` should be deprecated since color aesthetic won't be "pulled in via the theme" after AoG v0.7.
+    # For more details refer to  https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/505
+
+    left = f5[1, 1]
+    right = f5[1, 2]
+    plt5 = draw!(
+        left,
+        aog_layer,
+        scales(Color=(; colormap=(:linear_worb_100_25_c53_n256), colorrange=(0, 100), highclip=:cyan)); #, colorrange=(0, 25)# https://aog.makie.org/stable/generated/penguins/#Smooth-density-plots
+        axis=(f5sckwargs..., limits=(xylimits, xylimits),
+            xgridcolor=:black,
+            ygridcolor=:black,
+            xminorgridcolor=:black,
+            yminorgridcolor=:black,
+            xminorgridvisible=true,
+            yminorgridvisible=true,
+            xminorticks=IntervalsBetween(2),
+            yminorticks=IntervalsBetween(2),
+            xgridwidth=0.5,
+            ygridwidth=0.5,
+            xminorgridwidth=0.25,
+            yminorgridwidth=0.25,)
+    )
+
+    axs = filter(x -> x isa Axis, f5.content)
+    for ax1 in axs
+        plts = getproperty(Makie.get_scene(ax1), :plots)
+        [translate!(p, 0, 0, -100) for p in plts]
+    end # Move grid to the front (plot to behind): https://discourse.julialang.org/t/how-to-add-grid-lines-on-top-of-a-heatmap-in-makie/77578/2
+
+    colorbar!(right, plt5)
+
+    display(f5)
+    Makie.save("MolchanDiagram.png", f5)
+end
+
+
 
 # KEYNOTE:
 # - When scatter points concentrates at one or a few values, RainClouds are ugly, and Density & Density-related (e.g., Violin) goes wrong and misleading.
 # - I found no way to set AlgebraOfGraphics.histogram or .density to plot horizontally (the :direction argument for Hist and Density).
 # - it is not necessary to have pdf <= 1; it requires only integral over the entire area to be 1.
 # `AlgebraOfGraphic.density` use `KernelDensity.kde((df.AlarmedRateForecasting, df.MissingRateForecasting))`
-
-
-# dfa = groupby(P.table, :trial)[(trial = "GM", )]
-
-# dfan = dropnanmissing!(DataFrame(deepcopy(dfa)))
-
-# be = KernelDensity.kde((dfan.AlarmedRateForecasting, dfan.MissingRateForecasting))
-# # Molchan diagram
-# Keys for AOG:
-# - [How to combine AlgebraOfGraphics with plain Makie plots?](https://aog.makie.org/stable/FAQs/#How-to-combine-AlgebraOfGraphics-with-plain-Makie-plots?)

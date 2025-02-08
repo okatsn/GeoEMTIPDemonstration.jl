@@ -1,5 +1,12 @@
+md5: 5588b490fcca973cd78b420a8053fb26
+frozen: true
+deps:
+- path: map/Taiwan
+  repo:
+    url: https://github.com/okatsn/geophysics-datasets-registry.git
+    rev_lock: 2aa4d738172325a8f0ae4eba49a7e342114f03b2
 outs:
-- md5: d4dc3bf0a18cc722a3c56a23e4ffc3d6.dir
+- md5: e9b60864e9d552415a47413219ed868d.dir
   size: 5161171
   nfiles: 4
   hash: md5
