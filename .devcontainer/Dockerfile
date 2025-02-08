@@ -1,7 +1,7 @@
-FROM okatsn/my-julia-build:v1.10-2024e as build-julia
-FROM okatsn/my-quarto-build:2024c as build-quarto
+FROM okatsn/my-julia-build:v1.10-LTS AS build-julia
+FROM okatsn/my-quarto-build:v1.6 AS build-quarto
 FROM okatsn/my-typst-space:v2024d AS build0
-
+FROM okatsn/my-go-build:v2024 AS my-go-build
 # Please refer to https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-minimal-notebook
 # # Docker image repository seems to moved to quay.io
 # # The list of available tags: https://quay.io/repository/jupyter/minimal-notebook?tab=tags
@@ -31,6 +31,13 @@ ARG SUB_PROJECT_DIR="$HOME/workspace/projects/"
 USER root
 # Root user is necessary for the following command that creates the julia/quarto... link
 
+# Copy Go installation from the builder stage - still as root
+COPY --from=my-go-build /usr/local/go /usr/local/go
+# Set Go environment variables (although there is no "/go" in the container, this ENV should be defined to tell that it is the workspace for go.)
+ENV GOPATH=${HOME}/go  
+# Set GOPATH within user's home
+ENV PATH=/usr/local/go/bin:${GOPATH}/bin:${PATH}
+
 
 RUN apt-get update && apt-get -y install \
     bash-completion \
@@ -39,6 +46,10 @@ RUN apt-get update && apt-get -y install \
     # - `apt-cache search fonts | grep noto` to see available fonts.
     # - See also https://samwhelp.github.io/note-about-ubuntu/read/adjustment/env/font.html
     # RUN apt-get update && apt-get -y install \
+    tree \
+    # `tree` list the tree of file directory.
+    jq \ 
+    # load json data
     fontconfig \
     fonts-noto-cjk \
     fonts-noto-cjk-extra \
@@ -113,7 +124,10 @@ USER $NB_USER
 # Install font via conda.
 # RUN conda install font-ttf-noto-cjk font-ttf-noto-emoji -y
 
-
+# Install stitchmd:
+# A tool that stitches together several Markdown files into one large Markdown file, making it easier to maintain larger Markdown files.
+# See: https://github.com/abhinav/stitchmd?tab=readme-ov-file#installation
+RUN go install go.abhg.dev/stitchmd@latest
 
 # Build IJulia
 RUN julia -e 'using Pkg; Pkg.update(); Pkg.instantiate(); Pkg.build("IJulia");' 
@@ -136,7 +150,18 @@ RUN mamba install --quiet --yes \
     && mamba clean --all -f -y \
     && npm cache clean --force
 
+# Update pandoc to the latest
+# (this allows typst conversion e.g., `pandoc input.typ -o output.docx`)
+RUN conda install -y -c conda-forge pandoc
+
+
+
 USER root
+# Install UV
+# See [How to create a python project using UV](https://youtu.be/PwGKhvqJCQM?si=DzCSBuMeVWuaYNCx&t=396)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH=$PATH:$HOME/.local/bin
+
 
 # # Set dvc auto-complete. This requires bash-completion to be installed.
 # KEYNOTE: git auto-completion seems to be handled correctly in jupyter minimal notebook. For how to set git completion, you may refer to [the Dockerfile of MyTeXLife](https://github.com/okatsn/MyTeXLife/blob/fc00e3b840db2f63d8e3d67ac41065042f5b0602/.devcontainer/Dockerfile)

@@ -1,0 +1,44 @@
+// This is a list for extensions that will appear on EXTENSIONS/RECOMMENED tab.
+{
+    "recommendations": [
+        "adamvoss.vscode-languagetool",
+        "BhargavDetroja.export-your-extensions",
+        "bierner.markdown-mermaid",
+        "charliermarsh.ruff",
+        "christian-kohler.path-intellisense",
+        "codezombiech.gitignore",
+        "colinfang.markdown-julia",
+        "donjayamanne.git-extension-pack",
+        "donjayamanne.githistory",
+        "eamodio.gitlens",
+        "felipecaputo.git-project-manager",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "Gruntfuggly.todo-tree",
+        "imgildev.vscode-mustache-snippets",
+        "iterative.dvc",
+        "iterative.vscode-dvc-pack",
+        "jackiotyu.git-worktree-manager",
+        "julialang.language-julia",
+        "mechatroner.rainbow-csv",
+        "mhutchie.git-graph",
+        "ms-azuretools.vscode-docker",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-vscode.live-server",
+        "oderwat.indent-rainbow",
+        "quarto.quarto",
+        "redhat.vscode-yaml",
+        "shd101wyy.markdown-preview-enhanced",
+        "streetsidesoftware.code-spell-checker",
+        "tamasfe.even-better-toml",
+        "ziyasal.vscode-open-in-github",
+        // Markdown
+        "TakumiI.markdowntable",
+        "yzhang.markdown-all-in-one",
+        "renathossain.markdown-runner", // "copy" button for code block
+        // For python linting and formatting.
+        "charliermarsh.ruff"
+    ]
+}
